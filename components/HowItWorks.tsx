@@ -27,86 +27,28 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <div id="how" style={{ background: "var(--ink)" }}>
-      <div style={{ padding: "80px 2rem", maxWidth: 1200, margin: "0 auto" }}>
-        <div
-          style={{
-            fontFamily: "var(--mono)",
-            fontSize: 12,
-            fontWeight: 500,
-            color: "rgba(250,248,244,0.4)",
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            marginBottom: "1rem",
-          }}
-        >
+    <div id="how" className="bg-ink">
+      <div className="py-20 px-8 max-w-[1200px] mx-auto">
+        <div className="font-mono text-[12px] font-medium text-[rgba(250,248,244,0.4)] tracking-[0.08em] uppercase mb-4">
           How it works
         </div>
-        <h2
-          style={{
-            fontFamily: "var(--serif)",
-            fontSize: "clamp(32px, 4vw, 48px)",
-            lineHeight: 1.1,
-            letterSpacing: -0.5,
-            color: "var(--paper)",
-            marginBottom: "1rem",
-            maxWidth: 500,
-          }}
-        >
+        <h2 className="font-serif text-[clamp(32px,4vw,48px)] leading-[1.1] tracking-[-0.5px] text-paper mb-4 max-w-[500px]">
           From assignment to
           <br />
           accountability in four steps
         </h2>
 
         <div
-          className="steps-row"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "2px",
-            marginTop: "3rem",
-            background: "rgba(250,248,244,0.08)",
-            border: "1px solid rgba(250,248,244,0.08)",
-            borderRadius: 12,
-            overflow: "hidden",
-          }}
+          className="steps-row grid grid-cols-4 gap-[2px] mt-12 bg-[rgba(250,248,244,0.08)] border border-[rgba(250,248,244,0.08)] rounded-xl overflow-hidden"
         >
           {steps.map((s) => (
             <div key={s.num} className="step-cell">
-              <div
-                style={{
-                  fontFamily: "var(--serif)",
-                  fontSize: 48,
-                  lineHeight: 1,
-                  color: "rgba(250,248,244,0.07)",
-                  position: "absolute",
-                  top: "1rem",
-                  right: "1.25rem",
-                }}
-              >
+              <div className="font-serif text-[48px] leading-none text-[rgba(250,248,244,0.07)] absolute top-4 right-5">
                 {s.num}
               </div>
-              <div style={{ fontSize: 22, marginBottom: "1rem", color: "var(--paper)" }}>{s.icon}</div>
-              <div
-                style={{
-                  fontSize: 15,
-                  fontWeight: 500,
-                  color: "var(--paper)",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                {s.name}
-              </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: "rgba(250,248,244,0.5)",
-                  lineHeight: 1.6,
-                  fontWeight: 300,
-                }}
-              >
-                {s.desc}
-              </div>
+              <div className="text-[22px] mb-4 text-paper">{s.icon}</div>
+              <div className="text-[15px] font-medium text-paper mb-2">{s.name}</div>
+              <div className="text-[13px] text-[rgba(250,248,244,0.5)] leading-[1.6] font-light">{s.desc}</div>
             </div>
           ))}
         </div>

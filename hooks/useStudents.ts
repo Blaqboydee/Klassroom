@@ -25,7 +25,7 @@ export function useStudents(): UseStudentsReturn {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/users?role=student")
+    fetch("/api/users?role=student", { cache: "no-store" })
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to load students (${res.status})`);
         return res.json() as Promise<{ users: Student[] }>;

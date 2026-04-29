@@ -9,6 +9,8 @@ interface UseAssignmentsReturn {
   error: string | null;
   refetch: () => void;
   createAssignment: (data: { classroomId: string; title: string; description?: string; dueDate: string }) => Promise<Assignment | null>;
+  updateAssignment: (id: string, data: { title?: string; description?: string; dueDate?: string }) => Promise<boolean>;
+  deleteAssignment: (id: string) => Promise<boolean>;
   creating: boolean;
 }
 
@@ -23,7 +25,7 @@ export function useAssignments(filter?: { classroomId?: string }): UseAssignment
     setError(null);
     try {
       const qs = filter?.classroomId ? `?classroomId=${encodeURIComponent(filter.classroomId)}` : "";
-      const res = await fetch(`/api/assignments${qs}`);
+      const res = await fetch(`/api/assignments${qs}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`Failed to load assignments (${res.status})`);
       const data = await res.json() as { assignments: Assignment[] };
       setAssignments(data.assignments);
@@ -60,5 +62,30 @@ export function useAssignments(filter?: { classroomId?: string }): UseAssignment
     }
   }, []);
 
-  return { assignments, loading, error, refetch: fetchAssignments, createAssignment, creating };
+  const updateAssignment = useCallback(async (id: string, data: { title?: string; description?: string; dueDate?: string }): Promise<boolean> => {
+    const adminId = (() => { try { const u = localStorage.getItem("klassroom_user"); return u ? (JSON.parse(u) as { id: string }).id : undefined; } catch { return undefined; } })();
+    const res = await fetch(`/api/assignments/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...data, adminId }),
+    });
+    if (!res.ok) return false;
+    const body = await res.json() as { assignment: Assignment };
+    setAssignments((prev) => prev.map((a) => (a.id === id ? body.assignment : a)));
+    return true;
+  }, []);
+
+  const deleteAssignment = useCallback(async (id: string): Promise<boolean> => {
+    const adminId = (() => { try { const u = localStorage.getItem("klassroom_user"); return u ? (JSON.parse(u) as { id: string }).id : undefined; } catch { return undefined; } })();
+    const res = await fetch(`/api/assignments/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adminId }),
+    });
+    if (!res.ok) return false;
+    setAssignments((prev) => prev.filter((a) => a.id !== id));
+    return true;
+  }, []);
+
+  return { assignments, loading, error, refetch: fetchAssignments, createAssignment, updateAssignment, deleteAssignment, creating };
 }

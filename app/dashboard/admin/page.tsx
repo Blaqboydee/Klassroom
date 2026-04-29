@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useStudents } from "@/hooks/useStudents";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useSubmissions } from "@/hooks/useSubmissions";
@@ -20,7 +21,7 @@ export default function AdminDashboard() {
   }, []);
 
   const { students, loading: studentsLoading } = useStudents();
-  const { classrooms, creating: creatingClassroom, createClassroom } = useClassrooms({ adminId: currentUser?.id });
+  const { classrooms, loading: classroomsLoading, creating: creatingClassroom, createClassroom, updateClassroom, deleteClassroom } = useClassrooms({ adminId: currentUser?.id });
 
   const [selectedClassroomId, setSelectedClassroomId] = useState<string | null>(null);
   // Auto-select first classroom once loaded
@@ -30,7 +31,7 @@ export default function AdminDashboard() {
     }
   }, [classrooms, selectedClassroomId]);
 
-  const { assignments, loading: assignmentsLoading, createAssignment, creating } = useAssignments(
+  const { assignments, loading: assignmentsLoading, createAssignment, updateAssignment, deleteAssignment, creating } = useAssignments(
     selectedClassroomId ? { classroomId: selectedClassroomId } : undefined
   );
   const { submissions } = useSubmissions();
@@ -40,8 +41,27 @@ export default function AdminDashboard() {
   const [classroomName, setClassroomName] = useState("");
   const [classroomCreated, setClassroomCreated] = useState<string | null>(null); // stores the new code
 
+  // Modal state
+  type ModalState =
+    | { type: "deleteClassroom"; id: string; label: string }
+    | { type: "deleteAssignment"; id: string; label: string }
+    | { type: "editClassroom"; id: string; currentName: string }
+    | { type: "editAssignment"; id: string; currentTitle: string; currentDescription: string; currentDueDate: string }
+    | null;
+  const [modal, setModal] = useState<ModalState>(null);
+  const [modalInput, setModalInput] = useState("");
+  const [modalDateInput, setModalDateInput] = useState("");
+  const [modalDescInput, setModalDescInput] = useState("");
+  const [modalWorking, setModalWorking] = useState(false);
+
   // Build submission lookup: `${studentId}:${assignmentId}` → true
   const submittedSet = new Set(submissions.map((s) => `${s.studentId}:${s.assignmentId}`));
+
+  // Only show students enrolled in the selected classroom
+  const selectedClassroom = classrooms.find((c) => c.id === selectedClassroomId);
+  const enrolledStudents = selectedClassroom
+    ? students.filter((s) => selectedClassroom.memberIds.includes(s.id))
+    : [];
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -66,169 +86,60 @@ export default function AdminDashboard() {
   }
 
   const totalSubmissions = submissions.length;
-  const activeStudents = students.filter((s) => s.streak > 0).length;
+  const activeStudents = enrolledStudents.filter((s) => s.streak > 0).length;
   const [navOpen, setNavOpen] = useState(false);
+
+  async function handleModalConfirm() {
+    if (!modal) return;
+    setModalWorking(true);
+    try {
+      if (modal.type === "deleteClassroom") {
+        await deleteClassroom(modal.id);
+      } else if (modal.type === "deleteAssignment") {
+        await deleteAssignment(modal.id);
+      } else if (modal.type === "editClassroom") {
+        if (modalInput.trim()) await updateClassroom(modal.id, modalInput.trim());
+      } else if (modal.type === "editAssignment") {
+        await updateAssignment(modal.id, {
+          title: modalInput.trim() || undefined,
+          description: modalDescInput,
+          dueDate: modalDateInput || undefined,
+        });
+      }
+    } finally {
+      setModalWorking(false);
+      setModal(null);
+    }
+  }
+
+  function openEditClassroom(id: string, name: string) {
+    setModalInput(name);
+    setModal({ type: "editClassroom", id, currentName: name });
+  }
+  function openDeleteClassroom(id: string, name: string) {
+    setModal({ type: "deleteClassroom", id, label: name });
+  }
+  function openEditAssignment(id: string, title: string, description: string, dueDate: string) {
+    setModalInput(title);
+    setModalDescInput(description);
+    setModalDateInput(dueDate);
+    setModal({ type: "editAssignment", id, currentTitle: title, currentDescription: description, currentDueDate: dueDate });
+  }
+  function openDeleteAssignment(id: string, title: string) {
+    setModal({ type: "deleteAssignment", id, label: title });
+  }
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root {
-          --ink: #0f0e0c;
-          --ink-2: #3a3830;
-          --ink-3: #7a7770;
-          --paper: #faf8f4;
-          --paper-2: #f0ede6;
-          --paper-3: #e4e0d8;
-          --amber: #d97706;
-          --teal: #0d9488;
-          --border: #e4e0d8;
-          --serif: 'DM Serif Display', Georgia, serif;
-          --mono: 'DM Mono', 'Courier New', monospace;
-          --sans: 'Outfit', system-ui, sans-serif;
-        }
-        body { font-family: var(--sans); background: var(--paper); color: var(--ink); }
-        a { color: inherit; text-decoration: none; }
 
-        .dash-nav {
-          position: sticky; top: 0; z-index: 50;
-          background: rgba(250,248,244,0.92);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid var(--border);
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 0 2rem; height: 56px;
-        }
-        .brand { font-family: var(--serif); font-size: 18px; color: var(--ink); letter-spacing: -0.3px; }
-        .brand span { color: var(--amber); }
-        .nav-links { display: flex; align-items: center; gap: 1rem; }
-        .nav-link { font-size: 13px; color: var(--ink-3); font-weight: 400; transition: color 0.15s; }
-        .nav-link:hover { color: var(--ink); }
-        .live-btn {
-          font-size: 13px; font-weight: 500; color: var(--paper);
-          background: var(--teal); border-radius: 8px;
-          padding: 5px 14px; transition: background 0.15s;
-        }
-        .live-btn:hover { background: #0f766e; }
-        .nav-signout {
-          font-size: 13px; font-weight: 500; color: var(--ink-2);
-          border: 1px solid var(--border); border-radius: 8px;
-          padding: 5px 14px; transition: background 0.15s;
-        }
-        .nav-signout:hover { background: var(--paper-2); }
-
-        .page { max-width: 960px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
-        .page-header { margin-bottom: 2rem; }
-        .greeting { font-family: var(--serif); font-size: clamp(26px, 4vw, 36px); line-height: 1.1; letter-spacing: -0.5px; }
-        .greeting-sub { font-size: 14px; color: var(--ink-3); margin-top: 4px; }
-
-        .stats-row { display: flex; gap: 12px; margin-bottom: 2rem; flex-wrap: wrap; }
-        .stat-card { flex: 1; min-width: 120px; background: var(--paper); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; }
-        .stat-num { font-family: var(--serif); font-size: 28px; color: var(--ink); line-height: 1; }
-        .stat-label { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
-
-        .section-label {
-          font-family: var(--mono); font-size: 11px; font-weight: 500;
-          color: var(--ink-3); letter-spacing: 0.08em; text-transform: uppercase;
-          margin-bottom: 0.75rem; margin-top: 2rem;
-        }
-
-        .card {
-          background: var(--paper); border: 1px solid var(--border);
-          border-radius: 16px; overflow: hidden; margin-bottom: 12px;
-        }
-        .card-body { padding: 20px; }
-
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-        .form-input, .form-textarea {
-          width: 100%; padding: 10px 14px; border-radius: 10px;
-          border: 1px solid var(--border); background: var(--paper-2);
-          font-size: 13px; color: var(--ink); font-family: var(--sans);
-          outline: none; transition: border-color 0.15s, box-shadow 0.15s;
-        }
-        .form-input:focus, .form-textarea:focus {
-          border-color: var(--teal); box-shadow: 0 0 0 3px rgba(13,148,136,0.12);
-        }
-        .form-textarea { resize: none; display: block; }
-        .form-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 10px; }
-        .create-btn {
-          padding: 9px 20px; border-radius: 10px;
-          background: var(--ink); color: var(--paper);
-          font-size: 13px; font-weight: 500; font-family: var(--sans);
-          border: none; cursor: pointer; transition: background 0.15s;
-        }
-        .create-btn:hover { background: #2a2824; }
-        .create-btn:disabled { opacity: 0.5; cursor: default; }
-        .success-msg { font-size: 13px; color: var(--teal); font-family: var(--mono); display: flex; align-items: center; gap: 6px; }
-
-        .code-badge {
-          display: inline-block;
-          font-family: var(--mono); font-size: 22px; font-weight: 600;
-          letter-spacing: 0.18em; color: var(--teal);
-          background: #f0fdfa; border: 1px dashed #99f6e4;
-          border-radius: 10px; padding: 6px 16px;
-        }
-        .copy-btn {
-          background: none; border: none; cursor: pointer;
-          color: var(--ink-3); padding: 4px; border-radius: 6px;
-          transition: color 0.15s, background 0.15s;
-        }
-        .copy-btn:hover { color: var(--ink); background: var(--paper-3); }
-        .classroom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-bottom: 12px; }
-        .classroom-card { background: var(--paper); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
-        .classroom-name { font-size: 14px; font-weight: 500; color: var(--ink); margin-bottom: 10px; }
-        .classroom-meta { font-size: 11px; color: var(--ink-3); margin-top: 8px; }
-        thead { border-bottom: 1px solid var(--border); }
-        th { padding: 10px 14px; text-align: left; font-family: var(--mono); font-size: 10px; font-weight: 500; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
-        th.center, td.center { text-align: center; }
-        td { padding: 12px 14px; border-bottom: 1px solid var(--paper-2); color: var(--ink-2); }
-        tr:last-child td { border-bottom: none; }
-        tbody tr:hover td { background: var(--paper-2); }
-        .student-name { font-weight: 500; color: var(--ink); margin-bottom: 2px; }
-        .student-email { font-size: 11px; color: var(--ink-3); font-family: var(--mono); }
-
-        .streak-badge {
-          display: inline-flex; align-items: center; gap: 5px;
-          font-family: var(--mono); font-size: 13px; font-weight: 500;
-          padding: 2px 8px; border-radius: 100px;
-        }
-        .streak-active { background: #fef3c7; color: #92400e; }
-        .streak-dead { background: var(--paper-2); color: var(--ink-3); }
-
-        .dot-yes { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #dcfce7; color: #166534; font-size: 11px; line-height: 20px; text-align: center; }
-        .dot-no  { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: var(--paper-3); color: var(--ink-3); font-size: 11px; line-height: 20px; text-align: center; }
-
-        .nav-burger {
-          display: none; background: none; border: none;
-          cursor: pointer; padding: 6px; color: var(--ink);
-        }
-        .nav-drawer {
-          position: fixed; top: 56px; left: 0; right: 0; z-index: 49;
-          background: rgba(250,248,244,0.98); backdrop-filter: blur(12px);
-          border-bottom: 1px solid var(--border);
-          padding: 1rem 2rem 1.5rem;
-          display: flex; flex-direction: column; gap: 0.75rem;
-        }
-        .nav-drawer a { font-size: 16px; padding: 6px 0; }
-        @media (max-width: 640px) {
-          .nav-links { display: none !important; }
-          .nav-burger { display: block !important; }
-          .page { padding: 1.5rem 1rem 3rem; }
-          .stats-row { gap: 8px; }
-          .stat-card { min-width: 80px; padding: 12px 14px; }
-          .stat-num { font-size: 22px; }
-          .form-grid { grid-template-columns: 1fr; }
-          .card-body { padding: 14px; }
-        }
-      `}</style>
 
       {/* Nav */}
       <nav className="dash-nav">
-        <a href="/" className="brand">Klass<span>room</span></a>
+        <Link href="/" className="brand">Klass<span>room</span></Link>
         <div className="nav-links">
-          <a href="/dashboard/admin" className="nav-link">Dashboard</a>
-          <a href="/live" className="live-btn">Live board</a>
-          <a href="/login" className="nav-signout">Sign out</a>
+          <Link href="/dashboard/admin" className="nav-link-dash">Dashboard</Link>
+          <Link href="/live" className="live-btn">Live board</Link>
+          <Link href="/login" className="nav-signout">Sign out</Link>
         </div>
         <button className="nav-burger" aria-label={navOpen ? "Close menu" : "Open menu"} onClick={() => setNavOpen((o) => !o)}>
           {navOpen
@@ -239,9 +150,9 @@ export default function AdminDashboard() {
       </nav>
       {navOpen && (
         <div className="nav-drawer">
-          <a href="/dashboard/admin" className="nav-link" onClick={() => setNavOpen(false)}>Dashboard</a>
-          <a href="/live" className="nav-link" onClick={() => setNavOpen(false)}>Live board</a>
-          <a href="/login" className="nav-signout" style={{ border: "none", padding: 0 }} onClick={() => setNavOpen(false)}>Sign out</a>
+          <Link href="/dashboard/admin" className="nav-link-dash" onClick={() => setNavOpen(false)}>Dashboard</Link>
+          <Link href="/live" className="nav-link-dash" onClick={() => setNavOpen(false)}>Live board</Link>
+          <Link href="/login" className="nav-signout" onClick={() => setNavOpen(false)}>Sign out</Link>
         </div>
       )}
 
@@ -255,11 +166,11 @@ export default function AdminDashboard() {
         {/* Stats */}
         <div className="stats-row">
           <div className="stat-card">
-            <div className="stat-num">{studentsLoading ? "–" : students.length}</div>
+            <div className="stat-num">{studentsLoading ? <span className="skeleton w-8 h-7 inline-block" /> : enrolledStudents.length}</div>
             <div className="stat-label">students enrolled</div>
           </div>
           <div className="stat-card">
-            <div className="stat-num">{assignmentsLoading ? "–" : assignments.length}</div>
+            <div className="stat-num">{assignmentsLoading ? <span className="skeleton w-8 h-7 inline-block" /> : assignments.length}</div>
             <div className="stat-label">assignments posted</div>
           </div>
           <div className="stat-card">
@@ -274,32 +185,69 @@ export default function AdminDashboard() {
 
         {/* Classrooms */}
         <div className="section-label">Your classrooms</div>
-        {classrooms.length > 0 && (
+        {classroomsLoading ? (
+          <div className="classroom-grid mb-4">
+            {[0,1,2].map((i) => (
+              <div key={i} className="classroom-card">
+                <span className="skeleton h-5 w-32 block mb-2" />
+                <span className="skeleton h-6 w-16 block rounded-full" />
+                <span className="skeleton h-3 w-24 block mt-2" />
+              </div>
+            ))}
+          </div>
+        ) : classrooms.length > 0 && (
           <div className="classroom-grid">
             {classrooms.map((c) => (
-              <div key={c.id} className="classroom-card">
-                <div className="classroom-name">{c.name}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span className="code-badge">{c.code}</span>
-                  <button
-                    className="copy-btn"
-                    title="Copy join code"
-                    onClick={() => navigator.clipboard.writeText(c.code)}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-                    </svg>
-                  </button>
-                </div>
-                <div className="classroom-meta">{c.memberIds.length} student{c.memberIds.length !== 1 ? "s" : ""} enrolled</div>
-              </div>
+             <div key={c.id} className="classroom-card" style={{ minWidth: 0, overflow: "hidden" }}>
+  <div
+    className="classroom-name"
+    style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+  >
+    {c.name}
+  </div>
+
+  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", marginTop: "6px" }}>
+    <span className="code-badge">{c.code}</span>
+
+    <button className="copy-btn" title="Copy join code" onClick={() => navigator.clipboard.writeText(c.code)}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+      </svg>
+    </button>
+
+    <button className="copy-btn" title="Rename classroom" onClick={() => openEditClassroom(c.id, c.name)}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    </button>
+
+    <button
+      className="copy-btn"
+      title="Delete classroom"
+      style={{ color: "#dc2626" }}
+      onClick={() => openDeleteClassroom(c.id, c.name)}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        <path d="M10 11v6M14 11v6"/>
+        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+      </svg>
+    </button>
+  </div>
+
+  <div className="classroom-meta" style={{ marginTop: "8px" }}>
+    {c.memberIds.length} student{c.memberIds.length !== 1 ? "s" : ""} enrolled
+  </div>
+</div>
             ))}
           </div>
         )}
         <div className="card">
           <div className="card-body">
-            <form onSubmit={handleCreateClassroom} style={{ display: "flex", gap: 8 }}>
+            <form onSubmit={handleCreateClassroom} className="flex gap-2">
               <input
                 type="text"
                 className="form-input"
@@ -310,21 +258,20 @@ export default function AdminDashboard() {
               />
               <button
                 type="submit"
-                className="create-btn"
-                style={{ whiteSpace: "nowrap" }}
+                className="create-btn whitespace-nowrap"
                 disabled={creatingClassroom || !classroomName.trim() || !currentUser}
               >
                 {creatingClassroom ? "Creating…" : "Create"}
               </button>
             </form>
             {classroomCreated && (
-              <p className="success-msg" style={{ marginTop: 10 }}>
+              <p className="success-msg mt-[10px]">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Classroom created! Share code <span style={{ fontFamily: "var(--mono)", letterSpacing: "0.1em" }}>{classroomCreated}</span> with your students.
+                Classroom created! Share code <span className="font-mono tracking-[0.1em]">{classroomCreated}</span> with your students.
               </p>
             )}
             {!currentUser && (
-              <p style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 8 }}>Sign in to create classrooms.</p>
+              <p className="text-[12px] text-ink-3 mt-2">Sign in to create classrooms.</p>
             )}
           </div>
         </div>
@@ -334,7 +281,7 @@ export default function AdminDashboard() {
         <div className="card">
           <div className="card-body">
             {classrooms.length > 1 && (
-              <div style={{ marginBottom: 10 }}>
+                <div className="mb-[10px]">
                 <select
                   className="form-input"
                   value={selectedClassroomId ?? ""}
@@ -347,7 +294,7 @@ export default function AdminDashboard() {
               </div>
             )}
             {classrooms.length === 0 && (
-              <p style={{ fontSize: 13, color: "var(--ink-3)", marginBottom: 10 }}>Create a classroom first before adding assignments.</p>
+              <p className="text-[13px] text-ink-3 mb-[10px]">Create a classroom first before adding assignments.</p>
             )}
             <form onSubmit={handleCreate}>
               <div className="form-grid">
@@ -392,8 +339,19 @@ export default function AdminDashboard() {
 
         {/* Submission Matrix */}
         <div className="section-label">Submission overview</div>
-        <div className="card">
-          <div style={{ overflowX: "auto" }}>
+        <div className="overflow-x-auto border border-border rounded-2xl mb-3">
+            {studentsLoading || assignmentsLoading ? (
+              <div className="flex flex-col gap-3 p-5">
+                {[0,1,2,3].map((i) => (
+                  <div key={i} className="flex gap-4 items-center">
+                    <span className="skeleton h-4 w-32 block" />
+                    <span className="skeleton h-4 w-12 block" />
+                    <span className="skeleton h-4 w-20 block" />
+                    <span className="skeleton h-4 w-10 block" />
+                  </div>
+                ))}
+              </div>
+            ) : (
             <table>
               <thead>
                 <tr>
@@ -401,16 +359,42 @@ export default function AdminDashboard() {
                   <th className="center">Streak</th>
                   <th className="center">Last active</th>
                   {assignments.map((a) => (
-                    <th key={a.id} className="center" style={{ maxWidth: 110 }}>
-                      <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <th key={a.id} className="center">
+                      <span className="block overflow-hidden text-ellipsis whitespace-nowrap">
                         {a.title}
                       </span>
+                      <div className="flex items-center justify-center gap-1 mt-0.5">
+                        <button
+                          title="Edit assignment"
+                          style={{ color: "var(--color-ink-3)", background: "none", border: "none", cursor: "pointer", padding: "2px" }}
+                          onClick={() => openEditAssignment(a.id, a.title, a.description ?? "", a.dueDate)}
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                        <button
+                          title="Delete assignment"
+                          style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: "2px" }}
+                          onClick={() => openDeleteAssignment(a.id, a.title)}
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                            <path d="M10 11v6M14 11v6"/>
+                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                          </svg>
+                        </button>
+                      </div>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {students.map((s) => (
+                {enrolledStudents.length === 0 ? (
+                  <tr><td colSpan={3 + assignments.length} className="text-center text-ink-3 py-8 text-[13px]">{selectedClassroomId ? "No students enrolled in this classroom yet." : "Select a classroom to see submissions."}</td></tr>
+                ) : enrolledStudents.map((s) => (
                   <tr key={s.id}>
                     <td>
                       <div className="student-name">{s.name}</div>
@@ -438,9 +422,105 @@ export default function AdminDashboard() {
                 ))}
               </tbody>
             </table>
-          </div>
+            )}
         </div>
       </main>
+
+      {/* Confirm / Edit Modal */}
+      {modal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.35)]"
+          onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}
+        >
+          <div className="bg-paper border border-border rounded-2xl shadow-xl w-full max-w-[420px] mx-4 p-6 flex flex-col gap-5">
+            {/* Delete modals */}
+            {(modal.type === "deleteClassroom" || modal.type === "deleteAssignment") && (
+              <>
+                <div>
+                  <h2 className="font-serif text-[20px] text-ink leading-tight mb-1">
+                    Delete {modal.type === "deleteClassroom" ? "classroom" : "assignment"}?
+                  </h2>
+                  <p className="text-[13px] text-ink-3">
+                    <span className="font-medium text-ink">&ldquo;{modal.label}&rdquo;</span> will be permanently deleted. This cannot be undone.
+                  </p>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button className="px-4 py-2 rounded-lg border border-border text-ink-2 text-[14px] font-medium bg-paper-2 hover:bg-paper-3 transition-colors" onClick={() => setModal(null)} disabled={modalWorking}>Cancel</button>
+                  <button
+                    className="btn-primary"
+                    style={{ background: "#dc2626", borderColor: "#dc2626", padding: "8px 18px", fontSize: 14 }}
+                    onClick={handleModalConfirm}
+                    disabled={modalWorking}
+                  >
+                    {modalWorking ? "Deleting…" : "Delete"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Edit classroom modal */}
+            {modal.type === "editClassroom" && (
+              <>
+                <div>
+                  <h2 className="font-serif text-[20px] text-ink leading-tight mb-1">Rename classroom</h2>
+                </div>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={modalInput}
+                  onChange={(e) => setModalInput(e.target.value)}
+                  placeholder="Classroom name"
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end">
+                  <button className="px-4 py-2 rounded-lg border border-border text-ink-2 text-[14px] font-medium bg-paper-2 hover:bg-paper-3 transition-colors" onClick={() => setModal(null)} disabled={modalWorking}>Cancel</button>
+                  <button className="btn-primary" style={{ padding: "8px 18px", fontSize: 14 }} onClick={handleModalConfirm} disabled={modalWorking || !modalInput.trim()}>
+                    {modalWorking ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Edit assignment modal */}
+            {modal.type === "editAssignment" && (
+              <>
+                <div>
+                  <h2 className="font-serif text-[20px] text-ink leading-tight mb-1">Edit assignment</h2>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={modalInput}
+                    onChange={(e) => setModalInput(e.target.value)}
+                    placeholder="Title"
+                    autoFocus
+                  />
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={modalDateInput}
+                    onChange={(e) => setModalDateInput(e.target.value)}
+                  />
+                  <textarea
+                    className="form-textarea"
+                    rows={2}
+                    value={modalDescInput}
+                    onChange={(e) => setModalDescInput(e.target.value)}
+                    placeholder="Description (optional)"
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button className="px-4 py-2 rounded-lg border border-border text-ink-2 text-[14px] font-medium bg-paper-2 hover:bg-paper-3 transition-colors" onClick={() => setModal(null)} disabled={modalWorking}>Cancel</button>
+                  <button className="btn-primary" style={{ padding: "8px 18px", fontSize: 14 }} onClick={handleModalConfirm} disabled={modalWorking || !modalInput.trim()}>
+                    {modalWorking ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

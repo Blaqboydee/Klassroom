@@ -15,6 +15,8 @@ interface UseClassroomsReturn {
   refetch: () => void;
   createClassroom: (name: string, adminId: string) => Promise<Classroom | null>;
   joinClassroom: (code: string, userId: string) => Promise<{ classroom: Classroom | null; error?: string }>;
+  updateClassroom: (id: string, name: string) => Promise<boolean>;
+  deleteClassroom: (id: string) => Promise<boolean>;
   creating: boolean;
   joining: boolean;
 }
@@ -42,7 +44,7 @@ export function useClassrooms({ adminId, memberId }: UseClassroomsOptions = {}):
     const qs = adminId
       ? `?adminId=${encodeURIComponent(adminId)}`
       : `?memberId=${encodeURIComponent(memberId!)}`;
-    fetch(`/api/classrooms${qs}`)
+    fetch(`/api/classrooms${qs}`, { cache: "no-store" })
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to load classrooms (${res.status})`);
         return res.json() as Promise<{ classrooms: Classroom[] }>;
@@ -96,5 +98,30 @@ export function useClassrooms({ adminId, memberId }: UseClassroomsOptions = {}):
     }
   }, []);
 
-  return { classrooms, loading, error, refetch, createClassroom, joinClassroom, creating, joining };
+  const updateClassroom = useCallback(async (id: string, name: string): Promise<boolean> => {
+    const adminId = (() => { try { const u = localStorage.getItem("klassroom_user"); return u ? (JSON.parse(u) as { id: string }).id : undefined; } catch { return undefined; } })();
+    const res = await fetch(`/api/classrooms/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, adminId }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json() as { classroom: Classroom };
+    setClassrooms((prev) => prev.map((c) => (c.id === id ? data.classroom : c)));
+    return true;
+  }, []);
+
+  const deleteClassroom = useCallback(async (id: string): Promise<boolean> => {
+    const adminId = (() => { try { const u = localStorage.getItem("klassroom_user"); return u ? (JSON.parse(u) as { id: string }).id : undefined; } catch { return undefined; } })();
+    const res = await fetch(`/api/classrooms/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adminId }),
+    });
+    if (!res.ok) return false;
+    setClassrooms((prev) => prev.filter((c) => c.id !== id));
+    return true;
+  }, []);
+
+  return { classrooms, loading, error, refetch, createClassroom, joinClassroom, updateClassroom, deleteClassroom, creating, joining };
 }

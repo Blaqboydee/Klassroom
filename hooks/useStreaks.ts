@@ -26,7 +26,7 @@ export function useStreaks(studentId?: string): UseStreaksReturn {
     setError(null);
     try {
       const params = studentId ? `?studentId=${studentId}` : "";
-      const res = await fetch(`/api/streaks${params}`);
+      const res = await fetch(`/api/streaks${params}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`Failed to load streaks (${res.status})`);
       const data = await res.json() as { streaks: StreakEntry[] };
       setStreaks(data.streaks);

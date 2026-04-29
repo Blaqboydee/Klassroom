@@ -12,7 +12,6 @@ export default function Nav() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Close menu on resize to desktop
   useEffect(() => {
     const handleResize = () => { if (window.innerWidth > 600) setOpen(false); };
     window.addEventListener("resize", handleResize);
@@ -28,58 +27,22 @@ export default function Nav() {
 
   return (
     <>
-      <nav
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          padding: "0 2rem",
-          height: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          background: navScrolled ? "rgba(250,248,244,0.96)" : "rgba(250,248,244,0.92)",
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid var(--border)",
-          transition: "background 0.3s",
-        }}
-      >
-        <a
-          href="/"
-          style={{
-            fontFamily: "var(--serif)",
-            fontSize: 22,
-            color: "var(--ink)",
-            letterSpacing: -0.5,
-            textDecoration: "none",
-          }}
-        >
-          Klass<span style={{ color: "var(--amber)" }}>room</span>
+      <nav className={`fixed top-0 left-0 right-0 z-[100] px-8 h-[60px] flex items-center justify-between border-b border-border backdrop-blur-[12px] transition-[background] duration-300 ${navScrolled ? "bg-[rgba(250,248,244,0.96)]" : "bg-[rgba(250,248,244,0.92)]"}`}>
+        <a href="/" className="font-serif text-[22px] text-ink tracking-[-0.5px]">
+          Klass<span className="text-amber">room</span>
         </a>
 
-        {/* Desktop links */}
-        <div className="nav-links-desktop" style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
+        <div className="nav-links-desktop">
           {links.map((l) => (
             <a key={l.href} href={l.href} className="nav-link">{l.label}</a>
           ))}
           <a href="/signup" className="nav-cta nav-link">Get started</a>
         </div>
 
-        {/* Burger button — mobile only */}
         <button
-          className="nav-burger"
+          className="landing-burger"
           aria-label={open ? "Close menu" : "Open menu"}
           onClick={() => setOpen((o) => !o)}
-          style={{
-            display: "none",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "6px",
-            color: "var(--ink)",
-          }}
         >
           {open ? (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -93,53 +56,18 @@ export default function Nav() {
         </button>
       </nav>
 
-      {/* Mobile drawer */}
       {open && (
-        <div
-          className="nav-drawer"
-          style={{
-            position: "fixed",
-            top: 60,
-            left: 0,
-            right: 0,
-            zIndex: 99,
-            background: "rgba(250,248,244,0.98)",
-            backdropFilter: "blur(12px)",
-            borderBottom: "1px solid var(--border)",
-            padding: "1rem 2rem 1.5rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.75rem",
-          }}
-        >
+        <div className="landing-nav-drawer">
           {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="nav-link"
-              style={{ fontSize: 16, padding: "6px 0" }}
-              onClick={() => setOpen(false)}
-            >
+            <a key={l.href} href={l.href} className="nav-link text-base py-[6px]" onClick={() => setOpen(false)}>
               {l.label}
             </a>
           ))}
-          <a
-            href="/signup"
-            className="nav-cta nav-link"
-            style={{ marginTop: 6, textAlign: "center" }}
-            onClick={() => setOpen(false)}
-          >
+          <a href="/signup" className="nav-cta nav-link mt-[6px] text-center" onClick={() => setOpen(false)}>
             Get started
           </a>
         </div>
       )}
-
-      <style>{`
-        @media (max-width: 600px) {
-          .nav-links-desktop { display: none !important; }
-          .nav-burger { display: block !important; }
-        }
-      `}</style>
     </>
   );
 }

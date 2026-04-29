@@ -35,113 +35,35 @@ export default function Features() {
   return (
     <div
       id="features"
-      style={{
-        background: "var(--paper-2)",
-        borderTop: "1px solid var(--border)",
-        borderBottom: "1px solid var(--border)",
-      }}
+      className="bg-paper-2 border-t border-border border-b border-b-border"
     >
-      <div style={{ padding: "80px 2rem", maxWidth: 1200, margin: "0 auto" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            flexWrap: "wrap",
-            gap: "1rem",
-            marginBottom: "3rem",
-          }}
-        >
+      <div className="py-20 px-8 max-w-[1200px] mx-auto">
+        <div className="flex justify-between items-end flex-wrap gap-4 mb-12">
           <div>
-            <div
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 12,
-                fontWeight: 500,
-                color: "var(--ink-3)",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                marginBottom: "1rem",
-              }}
-            >
+            <div className="font-mono text-[12px] font-medium text-ink-3 tracking-[0.08em] uppercase mb-4">
               What you get
             </div>
-            <h2
-              style={{
-                fontFamily: "var(--serif)",
-                fontSize: "clamp(32px, 4vw, 48px)",
-                lineHeight: 1.1,
-                letterSpacing: -0.5,
-                color: "var(--ink)",
-              }}
-            >
+            <h2 className="font-serif text-[clamp(32px,4vw,48px)] leading-[1.1] tracking-[-0.5px] text-ink">
               Everything a classroom
               <br />
               needs, nothing it doesn&apos;t
             </h2>
           </div>
-          <p
-            style={{
-              fontSize: 15,
-              fontWeight: 300,
-              color: "var(--ink-2)",
-              lineHeight: 1.65,
-              maxWidth: 360,
-            }}
-          >
+          <p className="text-[15px] font-light text-ink-2 leading-[1.65] max-w-[360px]">
             No bloat. No complex setup. Just the tools that change behavior.
           </p>
         </div>
 
         <div
-          className="features-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "1.5px",
-            background: "var(--border)",
-            border: "1px solid var(--border)",
-            borderRadius: 16,
-            overflow: "hidden",
-          }}
+          className="features-grid grid grid-cols-3 gap-[1.5px] bg-border border border-border rounded-2xl overflow-hidden"
         >
           {features.map((f) => (
             <div key={f.name} className="feature-cell">
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 10,
-                  background: "var(--paper-2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "1.25rem",
-                  fontSize: 18,
-                }}
-              >
+              <div className="w-10 h-10 rounded-[10px] bg-paper-2 flex items-center justify-center mb-5">
                 {f.icon}
               </div>
-              <div
-                style={{
-                  fontSize: 16,
-                  fontWeight: 500,
-                  color: "var(--ink)",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                {f.name}
-              </div>
-              <div
-                style={{
-                  fontSize: 14,
-                  color: "var(--ink-2)",
-                  lineHeight: 1.6,
-                  fontWeight: 300,
-                }}
-              >
-                {f.desc}
-              </div>
+              <div className="text-[16px] font-medium text-ink mb-2">{f.name}</div>
+              <div className="text-[14px] text-ink-2 leading-[1.6] font-light">{f.desc}</div>
             </div>
           ))}
         </div>

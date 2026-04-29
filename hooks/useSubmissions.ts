@@ -32,7 +32,7 @@ export function useSubmissions(options: UseSubmissionsOptions = {}): UseSubmissi
       const params = new URLSearchParams();
       if (studentId) params.set("studentId", studentId);
       if (assignmentId) params.set("assignmentId", assignmentId);
-      const res = await fetch(`/api/submissions?${params.toString()}`);
+      const res = await fetch(`/api/submissions?${params.toString()}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`Failed to load submissions (${res.status})`);
       const data = await res.json() as { submissions: Submission[] };
       setSubmissions(data.submissions);

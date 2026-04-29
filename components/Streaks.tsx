@@ -49,149 +49,63 @@ const streakFacts = [
 export default function Streaks() {
   return (
     <div id="streaks">
-      <div style={{ padding: "80px 2rem", maxWidth: 1200, margin: "0 auto" }}>
+      <div className="py-20 px-8 max-w-[1200px] mx-auto">
         <div
-          className="streak-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "3rem",
-            alignItems: "center",
-          }}
+          className="streak-grid grid grid-cols-2 gap-12 items-center"
         >
           {/* Visual */}
-          <div
-            style={{
-              background: "var(--paper-2)",
-              border: "1px solid var(--border)",
-              borderRadius: 16,
-              padding: "2rem",
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 500,
-                color: "var(--ink-3)",
-                marginBottom: 4,
-                fontFamily: "var(--mono)",
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-              }}
-            >
+          <div className="bg-paper-2 border border-border rounded-2xl p-8 flex flex-col gap-3">
+            <div className="text-[13px] font-medium text-ink-3 mb-1 font-mono uppercase tracking-[0.06em]">
               Current streaks
             </div>
 
             {streakStudents.map((s) => (
               <div key={s.initials} className="streak-row">
                 <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: "50%",
-                    background: s.avatarBg,
-                    color: s.avatarColor,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    fontFamily: "var(--mono)",
-                    flexShrink: 0,
-                  }}
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-medium font-mono flex-shrink-0"
+                  style={{ background: s.avatarBg, color: s.avatarColor }}
                 >
                   {s.initials}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 400, color: "var(--ink)" }}>
-                    {s.name}
-                  </div>
-                  <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                <div className="flex-1">
+                  <div className="text-[14px] font-normal text-ink">{s.name}</div>
+                  <div className="flex gap-1 mt-[6px]">
                     {Array.from({ length: 7 }).map((_, i) => (
                       <div
                         key={i}
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: "50%",
-                          background: i < s.filled ? "var(--amber)" : "var(--paper-3)",
-                        }}
+                        className="w-2 h-2 rounded-full"
+                        style={{ background: i < s.filled ? "var(--color-amber)" : "var(--color-paper-3)" }}
                       />
                     ))}
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 20 }}>
+                <div className="flex items-center gap-1 text-[20px]">
                   {s.dead
                     ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
                     : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"/></svg>
                   }
-                  <span
-                    style={{
-                      fontFamily: "var(--mono)",
-                      fontSize: 16,
-                      fontWeight: 500,
-                      color: s.dead ? "var(--ink-3)" : "var(--ink)",
-                    }}
-                  >
+                  <span className="font-mono text-[16px] font-medium" style={{ color: s.dead ? "var(--color-ink-3)" : "var(--color-ink)" }}>
                     {s.streak}
                   </span>
                 </div>
               </div>
             ))}
 
-            <div
-              style={{
-                padding: "8px 0",
-                textAlign: "center",
-                fontSize: 12,
-                color: "var(--ink-3)",
-                fontFamily: "var(--mono)",
-              }}
-            >
+            <div className="py-2 text-center text-[12px] text-ink-3 font-mono">
               Miss one assignment → streak resets to 0
             </div>
           </div>
 
           {/* Content */}
           <div>
-            <div
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 12,
-                fontWeight: 500,
-                color: "var(--ink-3)",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                marginBottom: "1rem",
-              }}
-            >
+            <div className="font-mono text-[12px] font-medium text-ink-3 tracking-[0.08em] uppercase mb-4">
               The streak system
             </div>
-            <h2
-              style={{
-                fontFamily: "var(--serif)",
-                fontSize: 38,
-                lineHeight: 1.1,
-                letterSpacing: -0.5,
-                color: "var(--ink)",
-                marginBottom: "1rem",
-              }}
-            >
+            <h2 className="font-serif text-[38px] leading-[1.1] tracking-[-0.5px] text-ink mb-4">
               Consistency becomes
               <br />a competition
             </h2>
-            <p
-              style={{
-                fontSize: 16,
-                fontWeight: 300,
-                color: "var(--ink-2)",
-                lineHeight: 1.65,
-                marginBottom: "2rem",
-              }}
-            >
+            <p className="text-[16px] font-light text-ink-2 leading-[1.65] mb-8">
               Streaks are the psychological core of Klassroom. Simple rules,
               powerful outcomes.
             </p>
@@ -199,54 +113,14 @@ export default function Streaks() {
             {streakFacts.map((f, i) => (
               <div
                 key={f.title}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "1rem",
-                  marginBottom: i < streakFacts.length - 1 ? "1.5rem" : 0,
-                  paddingBottom: i < streakFacts.length - 1 ? "1.5rem" : 0,
-                  borderBottom:
-                    i < streakFacts.length - 1
-                      ? "1px solid var(--border)"
-                      : "none",
-                }}
+                className={`flex items-start gap-4${i < streakFacts.length - 1 ? " mb-6 pb-6 border-b border-border" : ""}`}
               >
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    background: "var(--paper-2)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 16,
-                    flexShrink: 0,
-                  }}
-                >
+                <div className="w-9 h-9 rounded-lg bg-paper-2 flex items-center justify-center flex-shrink-0">
                   {f.icon}
                 </div>
                 <div>
-                  <div
-                    style={{
-                      fontSize: 15,
-                      fontWeight: 500,
-                      color: "var(--ink)",
-                      marginBottom: 3,
-                    }}
-                  >
-                    {f.title}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: "var(--ink-2)",
-                      fontWeight: 300,
-                      lineHeight: 1.55,
-                    }}
-                  >
-                    {f.desc}
-                  </div>
+                  <div className="text-[15px] font-medium text-ink mb-[3px]">{f.title}</div>
+                  <div className="text-[13px] text-ink-2 font-light leading-[1.55]">{f.desc}</div>
                 </div>
               </div>
             ))}

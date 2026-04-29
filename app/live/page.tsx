@@ -1,144 +1,281 @@
-// Live Class Board — auto-refreshing view for classroom display
-// Polls every 5 seconds in real implementation (polling wired to API)
+"use client";
 
-const mockStudents = [
-  {
-    id: "1",
-    name: "Alex Johnson",
-    streak: 5,
-    submitted: true,
-    submittedAt: "2026-04-28T09:14:00Z",
-    isLate: false,
-  },
-  {
-    id: "2",
-    name: "Maria Garcia",
-    streak: 12,
-    submitted: true,
-    submittedAt: "2026-04-28T08:55:00Z",
-    isLate: false,
-  },
-  {
-    id: "3",
-    name: "James Lee",
-    streak: 0,
-    submitted: false,
-    submittedAt: null,
-    isLate: false,
-  },
-  {
-    id: "4",
-    name: "Priya Patel",
-    streak: 3,
-    submitted: true,
-    submittedAt: "2026-04-28T10:02:00Z",
-    isLate: false,
-  },
-  {
-    id: "5",
-    name: "Carlos Ruiz",
-    streak: 0,
-    submitted: false,
-    submittedAt: null,
-    isLate: false,
-  },
-  {
-    id: "6",
-    name: "Sophie Turner",
-    streak: 7,
-    submitted: true,
-    submittedAt: "2026-04-28T07:40:00Z",
-    isLate: false,
-  },
-];
+// Live Class Board — polls every 5 seconds for real-time classroom display
 
-const submitted = mockStudents.filter((s) => s.submitted).length;
-const total = mockStudents.length;
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import type { Classroom } from "@/models/Classroom";
+import type { User } from "@/models/User";
+import type { Assignment } from "@/models/Assignment";
+import type { Submission } from "@/models/Submission";
+
+interface SessionUser { id: string; name: string; role: "student" | "admin"; }
+
+interface BoardRow {
+  id: string;
+  name: string;
+  streak: number;
+  submission: Submission | null;
+}
+
+function useLiveBoard(classroomId: string | null, memberIds: string[]) {
+  const [allStudents, setAllStudents] = useState<User[]>([]);
+  const [assignment, setAssignment] = useState<Assignment | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const memberIdsKey = memberIds.join(",");
+
+  const poll = useCallback(async () => {
+    if (!classroomId) return;
+    try {
+      const [usersRes, assignmentsRes] = await Promise.all([
+        fetch("/api/users?role=student", { cache: "no-store" }),
+        fetch(`/api/assignments?classroomId=${encodeURIComponent(classroomId)}`, { cache: "no-store" }),
+      ]);
+      if (!usersRes.ok || !assignmentsRes.ok) throw new Error("Failed to load data");
+
+      const { users } = await usersRes.json() as { users: User[] };
+      const { assignments } = await assignmentsRes.json() as { assignments: Assignment[] };
+
+      const latest = assignments.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )[0] ?? null;
+
+      setAllStudents(users);
+      setAssignment(latest);
+
+      if (latest) {
+        const subRes = await fetch(`/api/submissions?assignmentId=${encodeURIComponent(latest.id)}`, { cache: "no-store" });
+        if (subRes.ok) {
+          const { submissions: subs } = await subRes.json() as { submissions: Submission[] };
+          setSubmissions(subs);
+        }
+      } else {
+        setSubmissions([]);
+      }
+
+      setLastUpdated(new Date());
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classroomId, memberIdsKey]);
+
+  useEffect(() => {
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => clearInterval(interval);
+  }, [poll]);
+
+  const memberSet = new Set(memberIds);
+  const students = allStudents.filter((s) => memberSet.has(s.id));
+
+  const rows: BoardRow[] = students.map((s) => ({
+    id: s.id,
+    name: s.name,
+    streak: s.streak,
+    submission: submissions.find((sub) => sub.studentId === s.id) ?? null,
+  }));
+
+  rows.sort((a, b) => {
+    if (a.submission && b.submission)
+      return new Date(a.submission.submittedAt).getTime() - new Date(b.submission.submittedAt).getTime();
+    if (a.submission) return -1;
+    if (b.submission) return 1;
+    return 0;
+  });
+
+  return { rows, assignment, lastUpdated, error };
+}
 
 export default function LiveBoardPage() {
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [classroomsLoading, setClassroomsLoading] = useState(true);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("klassroom_user");
+      if (raw) setCurrentUser(JSON.parse(raw) as SessionUser);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    setClassroomsLoading(true);
+    fetch(`/api/classrooms?adminId=${encodeURIComponent(currentUser.id)}`, { cache: "no-store" })
+      .then((r) => r.json() as Promise<{ classrooms: Classroom[] }>)
+      .then(({ classrooms: cls }) => {
+        setClassrooms(cls);
+        if (cls.length > 0) setSelectedId(cls[0].id);
+      })
+      .catch(() => { /* ignore */ })
+      .finally(() => setClassroomsLoading(false));
+  }, [currentUser?.id]);
+
+  const selectedClassroom = classrooms.find((c) => c.id === selectedId) ?? null;
+  const memberIds = selectedClassroom?.memberIds ?? [];
+
+  const { rows, assignment, lastUpdated, error } = useLiveBoard(selectedId, memberIds);
+
+  const submittedCount = rows.filter((r) => r.submission).length;
+  const lateCount = rows.filter((r) => r.submission?.isLate).length;
+  const total = rows.length;
+  const pct = total > 0 ? (submittedCount / total) * 100 : 0;
+
   return (
-    <div className="min-h-screen bg-zinc-900 text-white p-8 flex flex-col gap-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight">
-            📋 Live Class Board
-          </h1>
-          <p className="text-zinc-400 text-sm mt-1">
-            Assignment: <span className="text-white font-medium">Build a REST API</span>
-            &nbsp;·&nbsp;Due Apr 30, 2026
-          </p>
+    <div className="min-h-screen bg-paper flex flex-col">
+
+      {/* Nav */}
+      <nav className="dash-nav">
+        <Link href="/" className="brand">Klass<span>room</span></Link>
+        <div className="flex items-center gap-2 bg-[rgba(13,148,136,0.08)] border border-[rgba(13,148,136,0.2)] rounded-full px-3 py-1.5">
+          <div className="live-dot" />
+          <span className="font-mono text-[11px] font-medium text-teal tracking-widest uppercase">Live</span>
         </div>
-        <div className="text-right">
-          <p className="text-4xl font-black text-white">
-            {submitted}
-            <span className="text-zinc-500 text-2xl font-normal">/{total}</span>
-          </p>
-          <p className="text-xs text-zinc-400 uppercase tracking-widest mt-0.5">
-            Submitted
-          </p>
-        </div>
-      </div>
+      </nav>
 
-      {/* Progress bar */}
-      <div className="w-full h-2 bg-zinc-700 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-green-500 rounded-full transition-all duration-500"
-          style={{ width: `${(submitted / total) * 100}%` }}
-        />
-      </div>
+      <main className="max-w-[1100px] mx-auto w-full px-8 py-10 flex flex-col gap-8">
 
-      {/* Student grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {mockStudents.map((s) => (
-          <div
-            key={s.id}
-            className={`rounded-2xl p-5 flex flex-col gap-2 border transition-all ${
-              s.submitted
-                ? "bg-green-900/30 border-green-700"
-                : "bg-zinc-800 border-zinc-700"
-            }`}
-          >
-            <div className="flex items-start justify-between">
-              <p className="font-semibold text-base leading-tight">{s.name}</p>
-              <span
-                className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                  s.submitted
-                    ? "bg-green-700/50 text-green-300"
-                    : "bg-zinc-700 text-zinc-400"
-                }`}
-              >
-                {s.submitted ? "✓" : "–"}
-              </span>
-            </div>
+        {/* Classroom selector */}
+        {classroomsLoading ? (
+          <span className="skeleton h-9 w-56 block rounded-xl" />
+        ) : classrooms.length > 1 ? (
+          <div className="flex items-center gap-3">
+            <label className="font-mono text-[11px] text-ink-3 uppercase tracking-widest">Classroom</label>
+            <select
+              className="form-input max-w-[280px]"
+              value={selectedId ?? ""}
+              onChange={(e) => setSelectedId(e.target.value)}
+            >
+              {classrooms.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
-            <div className="flex items-center gap-2 text-sm">
-              <span
-                className={`font-bold ${
-                  s.streak > 0 ? "text-orange-400" : "text-zinc-600"
-                }`}
-              >
-                🔥 {s.streak}
-              </span>
-              <span className="text-zinc-500 text-xs">streak</span>
-            </div>
-
-            {s.submittedAt && (
-              <p className="text-xs text-zinc-500">
-                {new Date(s.submittedAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
+        {/* Page header */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="section-label" style={{ marginTop: 0 }}>
+              {selectedClassroom ? selectedClassroom.name : "Class board"}
+            </p>
+            <h1 className="font-serif text-[clamp(28px,4vw,42px)] leading-[1.1] tracking-[-0.5px] text-ink">
+              {assignment ? assignment.title : "No active assignment"}
+            </h1>
+            {assignment && (
+              <p className="text-[14px] text-ink-3 mt-1">Due {assignment.dueDate}</p>
             )}
           </div>
-        ))}
-      </div>
+          <div className="flex gap-3 flex-wrap">
+            <div className="stat-card text-center min-w-[90px]">
+              <div className="stat-num">{submittedCount}</div>
+              <div className="stat-label">submitted</div>
+            </div>
+            <div className="stat-card text-center min-w-[90px]">
+              <div className="stat-num">{total - submittedCount}</div>
+              <div className="stat-label">pending</div>
+            </div>
+            {lateCount > 0 && (
+              <div className="stat-card amber-card text-center min-w-[90px]">
+                <div className="stat-num amber">{lateCount}</div>
+                <div className="stat-label">late</div>
+              </div>
+            )}
+          </div>
+        </div>
 
-      {/* Poll indicator */}
-      <p className="text-xs text-zinc-600 text-center">
-        Refreshes every 5 seconds · Last updated just now
-      </p>
+        {error && (
+          <p className="text-red text-[13px] bg-red-light border border-[rgba(220,38,38,0.2)] rounded-xl px-4 py-2">
+            {error}
+          </p>
+        )}
+
+        {!classroomsLoading && classrooms.length === 0 && (
+          <p className="text-ink-3 text-[14px] text-center py-16">No classrooms found. Create one from the admin dashboard first.</p>
+        )}
+
+        {selectedClassroom && (
+          <>
+            <div className="w-full h-2 bg-paper-3 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-teal rounded-full transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+
+            {total === 0 ? (
+              <p className="text-ink-3 text-[14px] text-center py-16">No students enrolled in this classroom yet.</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {rows.map((s) => {
+                  const submitted = !!s.submission;
+                  const late = s.submission?.isLate ?? false;
+                  return (
+                    <div
+                      key={s.id}
+                      className={`rounded-[14px] p-4 flex flex-col gap-2 border transition-all ${
+                        submitted
+                          ? late
+                            ? "bg-[#fefce8] border-[#fde68a]"
+                            : "bg-[#f0fdf4] border-[#bbf7d0]"
+                          : "bg-paper border-border"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium text-[14px] text-ink leading-tight">{s.name}</p>
+                        <span
+                          className={`shrink-0 font-mono text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                            submitted
+                              ? late
+                                ? "bg-[#fefce8] text-[#854d0e] border-[#fde68a]"
+                                : "bg-[#f0fdf4] text-[#166534] border-[#bbf7d0]"
+                              : "bg-paper-2 text-ink-3 border-border"
+                          }`}
+                        >
+                          {submitted ? (late ? "Late" : "✓") : "–"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={s.streak > 0 ? "#d97706" : "#d1d5db"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"/>
+                        </svg>
+                        <span className={`font-mono text-[13px] font-medium ${s.streak > 0 ? "text-amber" : "text-ink-3"}`}>
+                          {s.streak}
+                        </span>
+                        <span className="text-ink-3 text-[11px]">streak</span>
+                      </div>
+
+                      {s.submission && (
+                        <p className="text-[11px] text-ink-3 font-mono">
+                          {new Date(s.submission.submittedAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        <p className="text-[12px] text-ink-3 font-mono text-center">
+          Refreshes every 5 seconds
+          {lastUpdated && (
+            <> · {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</>
+          )}
+        </p>
+
+      </main>
     </div>
   );
 }

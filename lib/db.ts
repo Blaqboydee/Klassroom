@@ -2,6 +2,7 @@
 // Uses a module-level cached promise so hot-reload in dev doesn't open new connections on every request.
 
 import { MongoClient, ObjectId, type Db } from "mongodb";
+import bcrypt from "bcryptjs";
 import type { User } from "@/models/User";
 import type { Classroom } from "@/models/Classroom";
 import type { Assignment } from "@/models/Assignment";
@@ -67,6 +68,21 @@ export async function createUser(data: Omit<User, "id">): Promise<User> {
   return { id: result.insertedId.toHexString(), ...data };
 }
 
+// Hash a plaintext password for storage.
+export async function hashPassword(plain: string): Promise<string> {
+  return bcrypt.hash(plain, 12);
+}
+
+// Verify a plaintext password against a stored hash. Returns the user if valid, null otherwise.
+export async function verifyAdminPassword(email: string, plain: string): Promise<User | null> {
+  const db = await getDb();
+  const doc = await db.collection("users").findOne({ email: email.toLowerCase(), role: "admin" });
+  if (!doc || !doc.passwordHash) return null;
+  const ok = await bcrypt.compare(plain, doc.passwordHash as string);
+  if (!ok) return null;
+  return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as User;
+}
+
 export async function updateUser(id: string, data: Partial<Omit<User, "id">>): Promise<User | null> {
   const db = await getDb();
   const result = await db.collection("users").findOneAndUpdate(
@@ -102,6 +118,13 @@ export async function createClassroom(data: Omit<Classroom, "id">): Promise<Clas
   return { id: result.insertedId.toHexString(), ...data };
 }
 
+export async function findClassroomById(id: string): Promise<Classroom | null> {
+  const db = await getDb();
+  const doc = await db.collection("classrooms").findOne({ _id: new ObjectId(id) });
+  if (!doc) return null;
+  return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as Classroom;
+}
+
 export async function addMemberToClassroom(classroomId: string, userId: string): Promise<Classroom | null> {
   const db = await getDb();
   const result = await db.collection("classrooms").findOneAndUpdate(
@@ -111,6 +134,23 @@ export async function addMemberToClassroom(classroomId: string, userId: string):
   );
   if (!result) return null;
   return toId(result as Record<string, unknown> & { _id: ObjectId }) as unknown as Classroom;
+}
+
+export async function updateClassroom(id: string, data: Partial<Pick<Classroom, "name">>): Promise<Classroom | null> {
+  const db = await getDb();
+  const result = await db.collection("classrooms").findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set: data },
+    { returnDocument: "after" }
+  );
+  if (!result) return null;
+  return toId(result as Record<string, unknown> & { _id: ObjectId }) as unknown as Classroom;
+}
+
+export async function deleteClassroom(id: string): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.collection("classrooms").deleteOne({ _id: new ObjectId(id) });
+  return result.deletedCount === 1;
 }
 
 // ─── Assignments ─────────────────────────────────────────────────────────────
@@ -133,6 +173,23 @@ export async function createAssignment(data: Omit<Assignment, "id">): Promise<As
   const db = await getDb();
   const result = await db.collection("assignments").insertOne(data);
   return { id: result.insertedId.toHexString(), ...data };
+}
+
+export async function updateAssignment(id: string, data: Partial<Pick<Assignment, "title" | "description" | "dueDate">>): Promise<Assignment | null> {
+  const db = await getDb();
+  const result = await db.collection("assignments").findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set: data },
+    { returnDocument: "after" }
+  );
+  if (!result) return null;
+  return toId(result as Record<string, unknown> & { _id: ObjectId }) as unknown as Assignment;
+}
+
+export async function deleteAssignment(id: string): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.collection("assignments").deleteOne({ _id: new ObjectId(id) });
+  return result.deletedCount === 1;
 }
 
 // ─── Submissions ─────────────────────────────────────────────────────────────
