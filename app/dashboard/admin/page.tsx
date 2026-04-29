@@ -67,6 +67,7 @@ export default function AdminDashboard() {
 
   const totalSubmissions = submissions.length;
   const activeStudents = students.filter((s) => s.streak > 0).length;
+  const [navOpen, setNavOpen] = useState(false);
 
   return (
     <>
@@ -196,6 +197,29 @@ export default function AdminDashboard() {
 
         .dot-yes { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #dcfce7; color: #166534; font-size: 11px; line-height: 20px; text-align: center; }
         .dot-no  { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: var(--paper-3); color: var(--ink-3); font-size: 11px; line-height: 20px; text-align: center; }
+
+        .nav-burger {
+          display: none; background: none; border: none;
+          cursor: pointer; padding: 6px; color: var(--ink);
+        }
+        .nav-drawer {
+          position: fixed; top: 56px; left: 0; right: 0; z-index: 49;
+          background: rgba(250,248,244,0.98); backdrop-filter: blur(12px);
+          border-bottom: 1px solid var(--border);
+          padding: 1rem 2rem 1.5rem;
+          display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        .nav-drawer a { font-size: 16px; padding: 6px 0; }
+        @media (max-width: 640px) {
+          .nav-links { display: none !important; }
+          .nav-burger { display: block !important; }
+          .page { padding: 1.5rem 1rem 3rem; }
+          .stats-row { gap: 8px; }
+          .stat-card { min-width: 80px; padding: 12px 14px; }
+          .stat-num { font-size: 22px; }
+          .form-grid { grid-template-columns: 1fr; }
+          .card-body { padding: 14px; }
+        }
       `}</style>
 
       {/* Nav */}
@@ -206,7 +230,20 @@ export default function AdminDashboard() {
           <a href="/live" className="live-btn">Live board</a>
           <a href="/login" className="nav-signout">Sign out</a>
         </div>
+        <button className="nav-burger" aria-label={navOpen ? "Close menu" : "Open menu"} onClick={() => setNavOpen((o) => !o)}>
+          {navOpen
+            ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+          }
+        </button>
       </nav>
+      {navOpen && (
+        <div className="nav-drawer">
+          <a href="/dashboard/admin" className="nav-link" onClick={() => setNavOpen(false)}>Dashboard</a>
+          <a href="/live" className="nav-link" onClick={() => setNavOpen(false)}>Live board</a>
+          <a href="/login" className="nav-signout" style={{ border: "none", padding: 0 }} onClick={() => setNavOpen(false)}>Sign out</a>
+        </div>
+      )}
 
       <main className="page">
         {/* Header */}

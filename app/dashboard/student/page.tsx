@@ -30,6 +30,8 @@ export default function StudentDashboard() {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joinSuccess, setJoinSuccess] = useState(false);
 
+  const [navOpen, setNavOpen] = useState(false);
+
   // Build a quick lookup: assignmentId → submission
   const submissionMap = Object.fromEntries(submissions.map((s) => [s.assignmentId, s]));
 
@@ -184,6 +186,30 @@ export default function StudentDashboard() {
         }
         .join-btn:hover { background: #0f766e; }
         .join-btn:disabled { opacity: 0.5; cursor: default; }
+
+        .nav-burger {
+          display: none; background: none; border: none;
+          cursor: pointer; padding: 6px; color: var(--ink);
+        }
+        .nav-drawer {
+          position: fixed; top: 56px; left: 0; right: 0; z-index: 49;
+          background: rgba(250,248,244,0.98); backdrop-filter: blur(12px);
+          border-bottom: 1px solid var(--border);
+          padding: 1rem 2rem 1.5rem;
+          display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        .nav-drawer a { font-size: 16px; padding: 6px 0; }
+        @media (max-width: 640px) {
+          .nav-links { display: none !important; }
+          .nav-burger { display: block !important; }
+          .page { padding: 1.5rem 1rem 3rem; }
+          .stats-row { gap: 8px; }
+          .stat-card { min-width: 80px; padding: 12px 14px; }
+          .stat-num { font-size: 22px; }
+          .assignment-card { padding: 14px; }
+          .submit-form { flex-direction: column; }
+          .join-form { flex-direction: column; }
+        }
         .classroom-chip {
           display: inline-flex; align-items: center; gap: 8px;
           background: var(--paper-2); border: 1px solid var(--border);
@@ -202,7 +228,20 @@ export default function StudentDashboard() {
           <a href="/live" className="nav-link">Live board</a>
           <a href="/login" className="nav-signout">Sign out</a>
         </div>
+        <button className="nav-burger" aria-label={navOpen ? "Close menu" : "Open menu"} onClick={() => setNavOpen((o) => !o)}>
+          {navOpen
+            ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+          }
+        </button>
       </nav>
+      {navOpen && (
+        <div className="nav-drawer">
+          <a href="/dashboard/student" className="nav-link" onClick={() => setNavOpen(false)}>My assignments</a>
+          <a href="/live" className="nav-link" onClick={() => setNavOpen(false)}>Live board</a>
+          <a href="/login" className="nav-signout" style={{ border: "none", padding: 0 }} onClick={() => setNavOpen(false)}>Sign out</a>
+        </div>
+      )}
 
       <main className="page">
         {/* Header */}

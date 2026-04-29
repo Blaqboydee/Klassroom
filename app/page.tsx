@@ -200,7 +200,6 @@ export default function LandingPage() {
         @media (max-width: 600px) {
           .features-grid { grid-template-columns: 1fr !important; }
           .steps-row { grid-template-columns: 1fr !important; }
-          .nav-links-desktop { display: none !important; }
         }
       `}</style>
 

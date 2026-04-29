@@ -30,6 +30,7 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [detectedRole, setDetectedRole] = useState<"student" | "admin" | null>(null);
   const [detectedName, setDetectedName] = useState("");
+  const [navOpen, setNavOpen] = useState(false);
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
@@ -229,6 +230,24 @@ export default function LoginPage() {
         }
         .help-link:hover { color: var(--ink-2); border-color: var(--border); }
 
+        .nav-links-row { display: flex; align-items: center; gap: 1.5rem; }
+        .nav-burger {
+          display: none; background: none; border: none;
+          cursor: pointer; padding: 6px; color: var(--ink);
+        }
+        .nav-drawer {
+          position: fixed; top: 60px; left: 0; right: 0; z-index: 49;
+          background: rgba(250,248,244,0.98); backdrop-filter: blur(12px);
+          border-bottom: 1px solid var(--border);
+          padding: 1rem 2rem 1.5rem;
+          display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        .nav-drawer a { font-size: 16px; padding: 6px 0; }
+        @media (max-width: 600px) {
+          .nav-links-row { display: none !important; }
+          .nav-burger { display: block !important; }
+        }
+
         .check-circle {
           width: 20px; height: 20px;
           border-radius: 50%;
@@ -267,11 +286,23 @@ export default function LoginPage() {
           <a href="/" className="brand-link">
             Klass<span>room</span>
           </a>
-          <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+          <div className="nav-links-row">
             <a href="/signup" className="help-link">Create account</a>
             <a href="mailto:support@klassroom.com" className="help-link">Need help?</a>
           </div>
+          <button className="nav-burger" aria-label={navOpen ? "Close menu" : "Open menu"} onClick={() => setNavOpen((o) => !o)}>
+            {navOpen
+              ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            }
+          </button>
         </nav>
+        {navOpen && (
+          <div className="nav-drawer">
+            <a href="/signup" className="help-link" onClick={() => setNavOpen(false)}>Create account</a>
+            <a href="mailto:support@klassroom.com" className="help-link" onClick={() => setNavOpen(false)}>Need help?</a>
+          </div>
+        )}
 
         {/* Main content */}
         <main

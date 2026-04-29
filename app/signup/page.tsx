@@ -35,6 +35,7 @@ export default function SignupPage() {
   const [role, setRole] = useState<"student" | "admin">("student");
   const [state, setState] = useState<SignupState>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [navOpen, setNavOpen] = useState(false);
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isValidName = name.trim().length >= 2;
@@ -253,6 +254,23 @@ export default function SignupPage() {
           transition: color 0.2s, border-color 0.2s;
         }
         .text-link:hover { color: var(--ink); border-color: var(--ink-3); }
+
+        .nav-signin-row { display: flex; align-items: center; font-size: 13px; color: var(--ink-3); }
+        .nav-burger {
+          display: none; background: none; border: none;
+          cursor: pointer; padding: 6px; color: var(--ink);
+        }
+        .nav-drawer {
+          position: fixed; top: 60px; left: 0; right: 0; z-index: 49;
+          background: rgba(250,248,244,0.98); backdrop-filter: blur(12px);
+          border-bottom: 1px solid var(--border);
+          padding: 1rem 2rem 1.5rem;
+          display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        @media (max-width: 600px) {
+          .nav-signin-row { display: none !important; }
+          .nav-burger { display: block !important; }
+        }
       `}</style>
 
       <div
@@ -283,13 +301,27 @@ export default function SignupPage() {
           <a href="/" className="brand-link">
             Klass<span>room</span>
           </a>
-          <span style={{ fontSize: 13, color: "var(--ink-3)" }}>
+          <span className="nav-signin-row">
             Already have an account?{" "}
-            <a href="/login" className="text-link">
+            <a href="/login" className="text-link" style={{ marginLeft: 4 }}>
               Sign in
             </a>
           </span>
+          <button className="nav-burger" aria-label={navOpen ? "Close menu" : "Open menu"} onClick={() => setNavOpen((o) => !o)}>
+            {navOpen
+              ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            }
+          </button>
         </nav>
+        {navOpen && (
+          <div className="nav-drawer">
+            <span style={{ fontSize: 14, color: "var(--ink-3)" }}>
+              Already have an account?{" "}
+              <a href="/login" className="text-link" onClick={() => setNavOpen(false)}>Sign in</a>
+            </span>
+          </div>
+        )}
 
         {/* Main */}
         <main
