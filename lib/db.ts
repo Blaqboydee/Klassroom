@@ -1,0 +1,161 @@
+// lib/db.ts — MongoDB singleton client
+// Uses a module-level cached promise so hot-reload in dev doesn't open new connections on every request.
+
+import { MongoClient, ObjectId, type Db } from "mongodb";
+import type { User } from "@/models/User";
+import type { Classroom } from "@/models/Classroom";
+import type { Assignment } from "@/models/Assignment";
+import type { Submission } from "@/models/Submission";
+
+const uri = process.env.MONGODB_URI;
+if (!uri) throw new Error("Missing MONGODB_URI environment variable");
+
+// Cache the client promise on the global object in development to survive HMR.
+declare global {
+  var _mongoClientPromise: Promise<MongoClient> | undefined;
+}
+
+let clientPromise: Promise<MongoClient>;
+if (process.env.NODE_ENV === "development") {
+  if (!global._mongoClientPromise) {
+    global._mongoClientPromise = new MongoClient(uri).connect();
+  }
+  clientPromise = global._mongoClientPromise;
+} else {
+  clientPromise = new MongoClient(uri).connect();
+}
+
+export async function getDb(): Promise<Db> {
+  const client = await clientPromise;
+  return client.db(); // uses the DB name from the connection string
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function toId(doc: Record<string, unknown> & { _id?: unknown }) {
+  const { _id, ...rest } = doc;
+  return { id: (_id as ObjectId | undefined)?.toHexString() ?? "", ...rest };
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+// Everyone is a "user" — role field separates admins from students.
+
+export async function findUsers(filter?: { role?: "student" | "admin" }): Promise<User[]> {
+  const db = await getDb();
+  const query = filter?.role ? { role: filter.role } : {};
+  const docs = await db.collection("users").find(query).toArray();
+  return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as User);
+}
+
+export async function findUserById(id: string): Promise<User | null> {
+  const db = await getDb();
+  const doc = await db.collection("users").findOne({ _id: new ObjectId(id) });
+  if (!doc) return null;
+  return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as User;
+}
+
+export async function findUserByEmail(email: string): Promise<User | null> {
+  const db = await getDb();
+  const doc = await db.collection("users").findOne({ email: email.toLowerCase() });
+  if (!doc) return null;
+  return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as User;
+}
+
+export async function createUser(data: Omit<User, "id">): Promise<User> {
+  const db = await getDb();
+  const result = await db.collection("users").insertOne({ ...data, email: data.email.toLowerCase() });
+  return { id: result.insertedId.toHexString(), ...data };
+}
+
+export async function updateUser(id: string, data: Partial<Omit<User, "id">>): Promise<User | null> {
+  const db = await getDb();
+  const result = await db.collection("users").findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set: data },
+    { returnDocument: "after" }
+  );
+  if (!result) return null;
+  return toId(result as Record<string, unknown> & { _id: ObjectId }) as unknown as User;
+}
+
+// ─── Classrooms ──────────────────────────────────────────────────────────────
+
+export async function findClassrooms(filter?: { adminId?: string; memberId?: string }): Promise<Classroom[]> {
+  const db = await getDb();
+  const query: Record<string, unknown> = {};
+  if (filter?.adminId) query.adminId = filter.adminId;
+  if (filter?.memberId) query.memberIds = filter.memberId; // $elemMatch via equality on array field
+  const docs = await db.collection("classrooms").find(query).sort({ createdAt: -1 }).toArray();
+  return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as Classroom);
+}
+
+export async function findClassroomByCode(code: string): Promise<Classroom | null> {
+  const db = await getDb();
+  const doc = await db.collection("classrooms").findOne({ code: code.toUpperCase() });
+  if (!doc) return null;
+  return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as Classroom;
+}
+
+export async function createClassroom(data: Omit<Classroom, "id">): Promise<Classroom> {
+  const db = await getDb();
+  const result = await db.collection("classrooms").insertOne(data);
+  return { id: result.insertedId.toHexString(), ...data };
+}
+
+export async function addMemberToClassroom(classroomId: string, userId: string): Promise<Classroom | null> {
+  const db = await getDb();
+  const result = await db.collection("classrooms").findOneAndUpdate(
+    { _id: new ObjectId(classroomId) },
+    { $addToSet: { memberIds: userId } },
+    { returnDocument: "after" }
+  );
+  if (!result) return null;
+  return toId(result as Record<string, unknown> & { _id: ObjectId }) as unknown as Classroom;
+}
+
+// ─── Assignments ─────────────────────────────────────────────────────────────
+
+export async function findAssignments(filter?: { classroomId?: string }): Promise<Assignment[]> {
+  const db = await getDb();
+  const query = filter?.classroomId ? { classroomId: filter.classroomId } : {};
+  const docs = await db.collection("assignments").find(query).sort({ createdAt: -1 }).toArray();
+  return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as Assignment);
+}
+
+export async function findAssignmentById(id: string): Promise<Assignment | null> {
+  const db = await getDb();
+  const doc = await db.collection("assignments").findOne({ _id: new ObjectId(id) });
+  if (!doc) return null;
+  return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as Assignment;
+}
+
+export async function createAssignment(data: Omit<Assignment, "id">): Promise<Assignment> {
+  const db = await getDb();
+  const result = await db.collection("assignments").insertOne(data);
+  return { id: result.insertedId.toHexString(), ...data };
+}
+
+// ─── Submissions ─────────────────────────────────────────────────────────────
+
+export async function findSubmissions(filter?: { studentId?: string; assignmentId?: string }): Promise<Submission[]> {
+  const db = await getDb();
+  const query: Record<string, string> = {};
+  if (filter?.studentId) query.studentId = filter.studentId;
+  if (filter?.assignmentId) query.assignmentId = filter.assignmentId;
+  const docs = await db.collection("submissions").find(query).toArray();
+  return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as Submission);
+}
+
+export async function createSubmission(data: Omit<Submission, "id">): Promise<Submission> {
+  const db = await getDb();
+  const result = await db.collection("submissions").insertOne(data);
+  return { id: result.insertedId.toHexString(), ...data };
+}
+
+// ─── Backward-compat aliases ──────────────────────────────────────────────────
+// Used by /api/auth, /api/students, /api/submissions, /api/streaks routes.
+export const findStudents = findUsers;
+export const findStudentById = findUserById;
+export const findStudentByEmail = findUserByEmail;
+export const createStudent = createUser;
+export const updateStudent = updateUser;
