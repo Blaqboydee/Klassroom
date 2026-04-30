@@ -21,9 +21,35 @@ export default function StudentDashboard() {
 
   const studentId = currentUser?.id ?? "";
 
-  const { assignments, loading: assignmentsLoading, error: assignmentsError } = useAssignments();
-  const { submissions, loading: submissionsLoading, submit, submitting: submitPending } = useSubmissions({ studentId: studentId || undefined });
   const { classrooms, loading: classroomsLoading, joining, joinClassroom, refetch: refetchClassrooms } = useClassrooms({ memberId: studentId || undefined });
+
+  // Only load assignments for classrooms this student is enrolled in
+  const enrolledClassroomIds = classrooms.map((c) => c.id);
+  const { assignments, loading: assignmentsLoading, error: assignmentsError } = useAssignments(
+    enrolledClassroomIds.length > 0 ? { classroomIds: enrolledClassroomIds } : undefined
+  );
+  const { submissions, loading: submissionsLoading, submit } = useSubmissions({ studentId: studentId || undefined });
+
+  // Real streak fetched from the server (updated after each submission)
+  const [streak, setStreak] = useState(0);
+  const [streakLoading, setStreakLoading] = useState(false);
+
+  const fetchStreak = async (id: string) => {
+    setStreakLoading(true);
+    try {
+      const res = await fetch(`/api/users/${encodeURIComponent(id)}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json() as { user: { streak: number } };
+        setStreak(data.user.streak);
+      }
+    } finally {
+      setStreakLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (studentId) fetchStreak(studentId);
+  }, [studentId]);
 
   const [linkValues, setLinkValues] = useState<Record<string, string>>({});
   const [submittingId, setSubmittingId] = useState<string | null>(null);
@@ -44,6 +70,8 @@ export default function StudentDashboard() {
     setLinkValues((v) => { const next = { ...v }; delete next[assignmentId]; return next; });
     setSubmittingId(null);
     void dueDate; // isLate computed server-side
+    // Refresh streak from server after submission
+    fetchStreak(studentId);
   }
 
   async function handleJoinClassroom(e: React.FormEvent) {
@@ -64,7 +92,6 @@ export default function StudentDashboard() {
 
   const pendingCount = assignments.filter((a) => !submissionMap[a.id]).length;
   const submittedCount = assignments.filter((a) => !!submissionMap[a.id]).length;
-  const streak = currentUser ? (submissions.length > 0 ? 1 : 0) : 0; // streak comes from user record; simplified here
 
   return (
     <>
@@ -107,7 +134,7 @@ export default function StudentDashboard() {
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"/>
               </svg>
-              {submissionsLoading ? <span className="skeleton w-6 h-7 inline-block" /> : streak}
+              {submissionsLoading || streakLoading ? <span className="skeleton w-6 h-7 inline-block" /> : streak}
             </div>
             <div className="stat-label">day streak</div>
           </div>
@@ -229,7 +256,7 @@ export default function StudentDashboard() {
                   placeholder="https://github.com/you/project"
                   value={linkValues[a.id] ?? ""}
                   onChange={(e) => setLinkValues((v) => ({ ...v, [a.id]: e.target.value }))}
-                  disabled={submittingId === a.id || submitPending}
+                  disabled={submittingId === a.id}
                 />
                 <button
                   className="submit-btn-dash"

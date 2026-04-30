@@ -133,9 +133,21 @@ export default function LiveBoardPage() {
       {/* Nav */}
       <nav className="dash-nav">
         <Link href="/" className="brand">Klass<span>room</span></Link>
-        <div className="flex items-center gap-2 bg-[rgba(13,148,136,0.08)] border border-[rgba(13,148,136,0.2)] rounded-full px-3 py-1.5">
-          <div className="live-dot" />
-          <span className="font-mono text-[11px] font-medium text-teal tracking-widest uppercase">Live</span>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/admin"
+            className="flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Dashboard
+          </Link>
+          <div className="w-px h-4 bg-border" />
+          <div className="flex items-center gap-2 bg-[rgba(13,148,136,0.08)] border border-[rgba(13,148,136,0.2)] rounded-full px-3 py-1.5">
+            <div className="live-dot" />
+            <span className="font-mono text-[11px] font-medium text-teal tracking-widest uppercase">Live</span>
+          </div>
         </div>
       </nav>
 

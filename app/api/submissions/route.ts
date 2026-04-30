@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findSubmissions, createSubmission, findAssignmentById, updateStudent, findStudentById } from "../../../lib/db";
+import { findSubmissions, createSubmission, findAssignmentById, updateStudent, findStudentById, findClassrooms, findAssignmentsByClassroomIds } from "../../../lib/db";
 
 // GET /api/submissions — list submissions (optionally filtered by ?studentId= or ?assignmentId=)
 export async function GET(req: NextRequest) {
@@ -35,19 +35,35 @@ export async function POST(req: NextRequest) {
 
   const submission = await createSubmission({ studentId, assignmentId, link, submittedAt, isLate });
 
-  // Update streak
+  // Recalculate streak: count consecutive most-recent assignments submitted
   const student = await findStudentById(studentId);
   if (student) {
-    const today = submittedAt.slice(0, 10);
-    const last = student.lastSubmissionDate;
-    let streak = student.streak;
-    if (!last) {
-      streak = 1;
-    } else {
-      const gap = (new Date(today).getTime() - new Date(last).getTime()) / 86_400_000;
-      streak = gap <= 1 ? streak + 1 : 1;
+    // Get all classrooms this student is enrolled in
+    const enrolledClassrooms = await findClassrooms({ memberId: studentId });
+    const classroomIds = enrolledClassrooms.map((c) => c.id);
+
+    // Get all assignments across those classrooms, sorted by dueDate ascending
+    const allAssignments = await findAssignmentsByClassroomIds(classroomIds);
+
+    // Get all this student's submissions
+    const allSubmissions = await findSubmissions({ studentId });
+    const submittedSet = new Set(allSubmissions.map((s) => s.assignmentId));
+
+    // Only consider assignments whose dueDate has passed (can't penalise for future ones)
+    const now = new Date();
+    const pastAssignments = allAssignments.filter((a) => new Date(a.dueDate) <= now);
+
+    // Walk backwards: count consecutive submitted assignments until first gap
+    let streak = 0;
+    for (let i = pastAssignments.length - 1; i >= 0; i--) {
+      if (submittedSet.has(pastAssignments[i].id)) {
+        streak++;
+      } else {
+        break;
+      }
     }
-    await updateStudent(studentId, { streak, lastSubmissionDate: today });
+
+    await updateStudent(studentId, { streak, lastSubmissionDate: submittedAt.slice(0, 10) });
   }
 
   return NextResponse.json({ submission }, { status: 201 });

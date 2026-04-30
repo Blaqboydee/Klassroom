@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findAssignments, createAssignment } from "../../../lib/db";
+import { findAssignments, findAssignmentsByClassroomIds, createAssignment } from "../../../lib/db";
 
-// GET /api/assignments — list all assignments, optionally filtered by ?classroomId=
+// GET /api/assignments — list assignments, filtered by ?classroomId= (single or multiple)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const classroomId = searchParams.get("classroomId") ?? undefined;
-  const assignments = await findAssignments(classroomId ? { classroomId } : undefined);
+  const classroomIds = searchParams.getAll("classroomId");
+
+  let assignments;
+  if (classroomIds.length > 1) {
+    assignments = await findAssignmentsByClassroomIds(classroomIds);
+  } else if (classroomIds.length === 1) {
+    assignments = await findAssignments({ classroomId: classroomIds[0] });
+  } else {
+    assignments = await findAssignments();
+  }
   return NextResponse.json({ assignments });
 }
 

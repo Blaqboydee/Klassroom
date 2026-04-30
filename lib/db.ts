@@ -162,6 +162,13 @@ export async function findAssignments(filter?: { classroomId?: string }): Promis
   return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as Assignment);
 }
 
+export async function findAssignmentsByClassroomIds(classroomIds: string[]): Promise<Assignment[]> {
+  if (classroomIds.length === 0) return [];
+  const db = await getDb();
+  const docs = await db.collection("assignments").find({ classroomId: { $in: classroomIds } }).sort({ dueDate: 1 }).toArray();
+  return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as Assignment);
+}
+
 export async function findAssignmentById(id: string): Promise<Assignment | null> {
   const db = await getDb();
   const doc = await db.collection("assignments").findOne({ _id: new ObjectId(id) });

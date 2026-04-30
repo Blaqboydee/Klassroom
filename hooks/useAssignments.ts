@@ -14,17 +14,32 @@ interface UseAssignmentsReturn {
   creating: boolean;
 }
 
-export function useAssignments(filter?: { classroomId?: string }): UseAssignmentsReturn {
+export function useAssignments(filter?: { classroomId?: string; classroomIds?: string[] }): UseAssignmentsReturn {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const classroomIdsKey = filter?.classroomIds?.join(",") ?? "";
+
   const fetchAssignments = useCallback(async () => {
+    // If classroomIds array is provided but empty, student has no classrooms yet — skip fetch
+    if (filter?.classroomIds !== undefined && filter.classroomIds.length === 0) {
+      setAssignments([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const qs = filter?.classroomId ? `?classroomId=${encodeURIComponent(filter.classroomId)}` : "";
+      let qs = "";
+      if (filter?.classroomId) {
+        qs = `?classroomId=${encodeURIComponent(filter.classroomId)}`;
+      } else if (filter?.classroomIds && filter.classroomIds.length > 0) {
+        const params = new URLSearchParams();
+        filter.classroomIds.forEach((id) => params.append("classroomId", id));
+        qs = `?${params.toString()}`;
+      }
       const res = await fetch(`/api/assignments${qs}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`Failed to load assignments (${res.status})`);
       const data = await res.json() as { assignments: Assignment[] };
@@ -35,7 +50,7 @@ export function useAssignments(filter?: { classroomId?: string }): UseAssignment
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter?.classroomId]);
+  }, [filter?.classroomId, classroomIdsKey]);
 
   useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
 

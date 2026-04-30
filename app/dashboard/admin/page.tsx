@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useStudents } from "@/hooks/useStudents";
 import { useAssignments } from "@/hooks/useAssignments";
@@ -34,7 +34,15 @@ export default function AdminDashboard() {
   const { assignments, loading: assignmentsLoading, createAssignment, updateAssignment, deleteAssignment, creating } = useAssignments(
     selectedClassroomId ? { classroomId: selectedClassroomId } : undefined
   );
-  const { submissions } = useSubmissions();
+  const { submissions, refetch: refetchSubmissions } = useSubmissions();
+
+  // Poll submissions every 10 seconds so the grid updates without a manual refresh
+  const refetchRef = useRef(refetchSubmissions);
+  useEffect(() => { refetchRef.current = refetchSubmissions; }, [refetchSubmissions]);
+  useEffect(() => {
+    const interval = setInterval(() => refetchRef.current(), 10_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [form, setForm] = useState({ title: "", description: "", dueDate: "" });
   const [created, setCreated] = useState(false);
