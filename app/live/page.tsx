@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import type { Classroom } from "@/models/Classroom";
 import type { User } from "@/models/User";
 import type { Assignment } from "@/models/Assignment";
@@ -92,6 +93,8 @@ function useLiveBoard(classroomId: string | null, memberIds: string[]) {
 }
 
 export default function LiveBoardPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -100,9 +103,16 @@ export default function LiveBoardPage() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem("klassroom_user");
-      if (raw) setCurrentUser(JSON.parse(raw) as SessionUser);
+      if (raw) {
+        const user = JSON.parse(raw) as SessionUser;
+        if (user.role !== "admin") {
+          router.replace("/dashboard/student");
+          return;
+        }
+        setCurrentUser(user);
+      }
     } catch { /* ignore */ }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -132,11 +142,11 @@ export default function LiveBoardPage() {
 
       {/* Nav */}
       <nav className="dash-nav">
-        <Link href="/" className="brand">Klass<span>room</span></Link>
+        <Link href="/dashboard/admin" className="brand">Klass<span>room</span></Link>
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/admin"
-            className="flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink transition-colors"
+            className={`flex items-center gap-1.5 text-[13px] font-medium transition-colors nav-link-dash${pathname === "/dashboard/admin" ? " active" : ""}`}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -240,7 +250,7 @@ export default function LiveBoardPage() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <p className="font-medium text-[14px] text-ink leading-tight">{s.name}</p>
+                        <p className="font-medium text-[14px] text-ink leading-tight truncate min-w-0">{s.name}</p>
                         <span
                           className={`shrink-0 font-mono text-[10px] font-medium px-2 py-0.5 rounded-full border ${
                             submitted

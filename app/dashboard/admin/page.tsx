@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import { useStudents } from "@/hooks/useStudents";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useSubmissions } from "@/hooks/useSubmissions";
@@ -10,7 +11,9 @@ import { useClassrooms } from "@/hooks/useClassrooms";
 interface SessionUser { id: string; name: string; role: "student" | "admin"; }
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
+  const pathname = usePathname();
 
   // Read session from localStorage (set by login/signup page)
   useEffect(() => {
@@ -62,8 +65,8 @@ export default function AdminDashboard() {
   const [modalDescInput, setModalDescInput] = useState("");
   const [modalWorking, setModalWorking] = useState(false);
 
-  // Build submission lookup: `${studentId}:${assignmentId}` → true
-  const submittedSet = new Set(submissions.map((s) => `${s.studentId}:${s.assignmentId}`));
+  // Build submission lookup: `${studentId}:${assignmentId}` → link
+  const submissionLinkMap = new Map(submissions.map((s) => [`${s.studentId}:${s.assignmentId}`, s.link]));
 
   // Only show students enrolled in the selected classroom
   const selectedClassroom = classrooms.find((c) => c.id === selectedClassroomId);
@@ -89,6 +92,7 @@ export default function AdminDashboard() {
     if (c) {
       setClassroomName("");
       setClassroomCreated(c.code);
+      setShowCreateClassroom(false);
       setTimeout(() => setClassroomCreated(null), 5000);
     }
   }
@@ -96,6 +100,13 @@ export default function AdminDashboard() {
   const totalSubmissions = submissions.length;
   const activeStudents = enrolledStudents.filter((s) => s.streak > 0).length;
   const [navOpen, setNavOpen] = useState(false);
+  const [showCreateClassroom, setShowCreateClassroom] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
+
+  function handleSignOut() {
+    try { localStorage.removeItem("klassroom_user"); } catch { /* ignore */ }
+    router.push("/login");
+  }
 
   async function handleModalConfirm() {
     if (!modal) return;
@@ -143,11 +154,11 @@ export default function AdminDashboard() {
 
       {/* Nav */}
       <nav className="dash-nav">
-        <Link href="/" className="brand">Klass<span>room</span></Link>
+        <Link href="/dashboard/admin" className="brand">Klass<span>room</span></Link>
         <div className="nav-links">
-          <Link href="/dashboard/admin" className="nav-link-dash">Dashboard</Link>
-          <Link href="/live" className="live-btn">Live board</Link>
-          <Link href="/login" className="nav-signout">Sign out</Link>
+          <Link href="/dashboard/admin" className={`nav-link-dash${pathname === "/dashboard/admin" ? " active" : ""}`}>Dashboard</Link>
+          <Link href="/live" className={`nav-link-dash${pathname === "/live" ? " active" : ""}`}>Live board</Link>
+          <button className="nav-signout" onClick={() => setShowSignOutModal(true)}>Sign out</button>
         </div>
         <button className="nav-burger" aria-label={navOpen ? "Close menu" : "Open menu"} onClick={() => setNavOpen((o) => !o)}>
           {navOpen
@@ -158,9 +169,9 @@ export default function AdminDashboard() {
       </nav>
       {navOpen && (
         <div className="nav-drawer">
-          <Link href="/dashboard/admin" className="nav-link-dash" onClick={() => setNavOpen(false)}>Dashboard</Link>
-          <Link href="/live" className="nav-link-dash" onClick={() => setNavOpen(false)}>Live board</Link>
-          <Link href="/login" className="nav-signout" onClick={() => setNavOpen(false)}>Sign out</Link>
+          <Link href="/dashboard/admin" className={`nav-link-dash${pathname === "/dashboard/admin" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Dashboard</Link>
+          <Link href="/live" className={`nav-link-dash${pathname === "/live" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Live board</Link>
+          <button className="nav-signout" onClick={() => { setNavOpen(false); setShowSignOutModal(true); }}>Sign out</button>
         </div>
       )}
 
@@ -192,7 +203,47 @@ export default function AdminDashboard() {
         </div>
 
         {/* Classrooms */}
-        <div className="section-label">Your classrooms</div>
+        <div className="section-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span>Your classrooms</span>
+          <button
+            className="create-btn"
+            style={{ fontSize: 12, padding: "4px 12px", marginBottom: 0 }}
+            onClick={() => { setShowCreateClassroom((v) => !v); setClassroomName(""); }}
+            disabled={!currentUser}
+          >
+            {showCreateClassroom ? "Cancel" : "+ New classroom"}
+          </button>
+        </div>
+        {showCreateClassroom && (
+          <div className="card" style={{ marginBottom: 12 }}>
+            <div className="card-body">
+              <form onSubmit={handleCreateClassroom} className="flex gap-2">
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Classroom name, e.g. CS101 Morning"
+                  value={classroomName}
+                  onChange={(e) => setClassroomName(e.target.value)}
+                  disabled={creatingClassroom || !currentUser}
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  className="create-btn whitespace-nowrap"
+                  disabled={creatingClassroom || !classroomName.trim() || !currentUser}
+                >
+                  {creatingClassroom ? "Creating…" : "Create"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+        {classroomCreated && (
+          <p className="success-msg" style={{ marginBottom: 10 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Classroom created! Share code <span className="font-mono tracking-[0.1em]">{classroomCreated}</span> with your students.
+          </p>
+        )}
         {classroomsLoading ? (
           <div className="classroom-grid mb-4">
             {[0,1,2].map((i) => (
@@ -253,37 +304,6 @@ export default function AdminDashboard() {
             ))}
           </div>
         )}
-        <div className="card">
-          <div className="card-body">
-            <form onSubmit={handleCreateClassroom} className="flex gap-2">
-              <input
-                type="text"
-                className="form-input"
-                placeholder="New classroom name, e.g. CS101 Morning"
-                value={classroomName}
-                onChange={(e) => setClassroomName(e.target.value)}
-                disabled={creatingClassroom || !currentUser}
-              />
-              <button
-                type="submit"
-                className="create-btn whitespace-nowrap"
-                disabled={creatingClassroom || !classroomName.trim() || !currentUser}
-              >
-                {creatingClassroom ? "Creating…" : "Create"}
-              </button>
-            </form>
-            {classroomCreated && (
-              <p className="success-msg mt-[10px]">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Classroom created! Share code <span className="font-mono tracking-[0.1em]">{classroomCreated}</span> with your students.
-              </p>
-            )}
-            {!currentUser && (
-              <p className="text-[12px] text-ink-3 mt-2">Sign in to create classrooms.</p>
-            )}
-          </div>
-        </div>
-
         {/* Create Assignment */}
         <div className="section-label">Create assignment</div>
         <div className="card">
@@ -314,13 +334,16 @@ export default function AdminDashboard() {
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   disabled={creating || !selectedClassroomId}
                 />
-                <input
-                  type="date"
-                  className="form-input"
-                  value={form.dueDate}
-                  onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-                  disabled={creating || !selectedClassroomId}
-                />
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] text-ink-3 font-medium uppercase tracking-wide pl-0.5">Due date</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={form.dueDate}
+                    onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
+                    disabled={creating || !selectedClassroomId}
+                  />
+                </div>
               </div>
               <textarea
                 className="form-textarea"
@@ -418,14 +441,31 @@ export default function AdminDashboard() {
                       </span>
                     </td>
                     <td className="center" style={{ fontFamily: "var(--mono)", fontSize: 11 }}>{s.lastSubmissionDate ?? "–"}</td>
-                    {assignments.map((a) => (
-                      <td key={a.id} className="center">
-                        {submittedSet.has(`${s.id}:${a.id}`)
-                          ? <span className="dot-yes"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-                          : <span className="dot-no">–</span>
-                        }
-                      </td>
-                    ))}
+                    {assignments.map((a) => {
+                      const link = submissionLinkMap.get(`${s.id}:${a.id}`);
+                      return (
+                        <td key={a.id} className="center">
+                          {link
+                            ? (
+                              <a
+                                href={link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={link}
+                                className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-teal-light text-teal hover:bg-teal hover:text-white transition-colors"
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                  <polyline points="15 3 21 3 21 9"/>
+                                  <line x1="10" y1="14" x2="21" y2="3"/>
+                                </svg>
+                              </a>
+                            )
+                            : <span className="dot-no">–</span>
+                          }
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -433,6 +473,25 @@ export default function AdminDashboard() {
             )}
         </div>
       </main>
+
+      {/* Sign-out confirmation modal */}
+      {showSignOutModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.35)]"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSignOutModal(false); }}
+        >
+          <div className="bg-paper border border-border rounded-2xl shadow-xl w-full max-w-[360px] mx-4 p-6 flex flex-col gap-5">
+            <div>
+              <h2 className="font-serif text-[20px] text-ink leading-tight mb-1">Sign out?</h2>
+              <p className="text-[13px] text-ink-3">You will be returned to the login page.</p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button className="px-4 py-2 rounded-lg border border-border text-ink-2 text-[14px] font-medium bg-paper-2 hover:bg-paper-3 transition-colors" onClick={() => setShowSignOutModal(false)}>Cancel</button>
+              <button className="btn-primary" style={{ background: "#dc2626", borderColor: "#dc2626", padding: "8px 18px", fontSize: 14 }} onClick={handleSignOut}>Sign out</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirm / Edit Modal */}
       {modal && (

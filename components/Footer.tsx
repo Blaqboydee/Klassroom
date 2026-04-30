@@ -22,9 +22,9 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="text-[12px] text-[rgba(250,248,244,0.25)] font-mono">
+        {/* <div className="text-[12px] text-[rgba(250,248,244,0.25)] font-mono">
           &copy; 2026 Klassroom
-        </div>
+        </div> */}
       </div>
     </footer>
   );

@@ -136,6 +136,18 @@ export async function addMemberToClassroom(classroomId: string, userId: string):
   return toId(result as Record<string, unknown> & { _id: ObjectId }) as unknown as Classroom;
 }
 
+export async function removeMemberFromClassroom(classroomId: string, userId: string): Promise<Classroom | null> {
+  const db = await getDb();
+  const oid = new ObjectId(classroomId);
+  await db.collection("classrooms").updateOne(
+    { _id: oid },
+    { $pull: { memberIds: userId } } as Record<string, unknown>
+  );
+  const doc = await db.collection("classrooms").findOne({ _id: oid });
+  if (!doc) return null;
+  return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as Classroom;
+}
+
 export async function updateClassroom(id: string, data: Partial<Pick<Classroom, "name">>): Promise<Classroom | null> {
   const db = await getDb();
   const result = await db.collection("classrooms").findOneAndUpdate(
@@ -214,6 +226,36 @@ export async function createSubmission(data: Omit<Submission, "id">): Promise<Su
   const db = await getDb();
   const result = await db.collection("submissions").insertOne(data);
   return { id: result.insertedId.toHexString(), ...data };
+}
+
+export async function findSubmissionById(id: string): Promise<Submission | null> {
+  const db = await getDb();
+  const doc = await db.collection("submissions").findOne({ _id: new ObjectId(id) });
+  if (!doc) return null;
+  return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as Submission;
+}
+
+export async function updateSubmission(id: string, link: string): Promise<Submission | null> {
+  const db = await getDb();
+  const result = await db.collection("submissions").findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set: { link } },
+    { returnDocument: "after" }
+  );
+  if (!result) return null;
+  return toId(result as Record<string, unknown> & { _id: ObjectId }) as unknown as Submission;
+}
+
+export async function deleteSubmission(id: string): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.collection("submissions").deleteOne({ _id: new ObjectId(id) });
+  return result.deletedCount === 1;
+}
+
+export async function deleteSubmissionsByAssignmentId(assignmentId: string): Promise<number> {
+  const db = await getDb();
+  const result = await db.collection("submissions").deleteMany({ assignmentId });
+  return result.deletedCount;
 }
 
 // ─── Backward-compat aliases ──────────────────────────────────────────────────

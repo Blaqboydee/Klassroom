@@ -49,9 +49,12 @@ export async function POST(req: NextRequest) {
     const allSubmissions = await findSubmissions({ studentId });
     const submittedSet = new Set(allSubmissions.map((s) => s.assignmentId));
 
-    // Only consider assignments whose dueDate has passed (can't penalise for future ones)
+    // Only consider assignments that are past-due OR already submitted
+    // (early submissions count; unsubmitted future assignments don't penalise)
     const now = new Date();
-    const pastAssignments = allAssignments.filter((a) => new Date(a.dueDate) <= now);
+    const pastAssignments = allAssignments.filter(
+      (a) => new Date(a.dueDate) <= now || submittedSet.has(a.id)
+    );
 
     // Walk backwards: count consecutive submitted assignments until first gap
     let streak = 0;

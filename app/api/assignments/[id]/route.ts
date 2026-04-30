@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateAssignment, deleteAssignment, findAssignmentById, findClassroomById, findUserById } from "../../../../lib/db";
+import { updateAssignment, deleteAssignment, deleteSubmissionsByAssignmentId, findAssignmentById, findClassroomById, findUserById } from "../../../../lib/db";
 
 // Verify the caller is an admin who owns the classroom this assignment belongs to.
 async function verifyOwner(assignmentId: string, adminId?: string): Promise<{ error: NextResponse } | { assignment: Awaited<ReturnType<typeof findAssignmentById>> }> {
@@ -45,5 +45,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const deleted = await deleteAssignment(id);
   if (!deleted) return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
+  // Cascade-delete all submissions for this assignment
+  await deleteSubmissionsByAssignmentId(id);
   return NextResponse.json({ success: true });
 }

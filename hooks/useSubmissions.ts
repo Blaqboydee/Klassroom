@@ -14,6 +14,8 @@ interface UseSubmissionsReturn {
   error: string | null;
   refetch: () => void;
   submit: (data: { studentId: string; assignmentId: string; link: string }) => Promise<Submission | null>;
+  updateSubmission: (id: string, link: string, studentId: string) => Promise<Submission | null>;
+  deleteSubmission: (id: string, studentId: string) => Promise<boolean>;
   submitting: boolean;
 }
 
@@ -68,5 +70,36 @@ export function useSubmissions(options: UseSubmissionsOptions = {}): UseSubmissi
     }
   }, []);
 
-  return { submissions, loading, error, refetch: fetchSubmissions, submit, submitting };
+  const updateSubmission = useCallback(async (id: string, link: string, studentId: string): Promise<Submission | null> => {
+    try {
+      const res = await fetch(`/api/submissions/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ link, studentId }),
+      });
+      if (!res.ok) return null;
+      const body = await res.json() as { submission: Submission };
+      setSubmissions((prev) => prev.map((s) => s.id === id ? body.submission : s));
+      return body.submission;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const deleteSubmission = useCallback(async (id: string, studentId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/submissions/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId }),
+      });
+      if (!res.ok) return false;
+      setSubmissions((prev) => prev.filter((s) => s.id !== id));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  return { submissions, loading, error, refetch: fetchSubmissions, submit, updateSubmission, deleteSubmission, submitting };
 }

@@ -15,10 +15,12 @@ interface UseClassroomsReturn {
   refetch: () => void;
   createClassroom: (name: string, adminId: string) => Promise<Classroom | null>;
   joinClassroom: (code: string, userId: string) => Promise<{ classroom: Classroom | null; error?: string }>;
+  leaveClassroom: (classroomId: string, userId: string) => Promise<boolean>;
   updateClassroom: (id: string, name: string) => Promise<boolean>;
   deleteClassroom: (id: string) => Promise<boolean>;
   creating: boolean;
   joining: boolean;
+  leaving: boolean;
 }
 
 export function useClassrooms({ adminId, memberId }: UseClassroomsOptions = {}): UseClassroomsReturn {
@@ -28,6 +30,7 @@ export function useClassrooms({ adminId, memberId }: UseClassroomsOptions = {}):
   const [tick, setTick] = useState(0);
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   const userId = adminId ?? memberId;
 
@@ -98,6 +101,22 @@ export function useClassrooms({ adminId, memberId }: UseClassroomsOptions = {}):
     }
   }, []);
 
+  const leaveClassroom = useCallback(async (classroomId: string, userId: string): Promise<boolean> => {
+    setLeaving(true);
+    try {
+      const res = await fetch("/api/classrooms/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classroomId, userId }),
+      });
+      if (!res.ok) return false;
+      setClassrooms((prev) => prev.filter((c) => c.id !== classroomId));
+      return true;
+    } finally {
+      setLeaving(false);
+    }
+  }, []);
+
   const updateClassroom = useCallback(async (id: string, name: string): Promise<boolean> => {
     const adminId = (() => { try { const u = localStorage.getItem("klassroom_user"); return u ? (JSON.parse(u) as { id: string }).id : undefined; } catch { return undefined; } })();
     const res = await fetch(`/api/classrooms/${encodeURIComponent(id)}`, {
@@ -123,5 +142,5 @@ export function useClassrooms({ adminId, memberId }: UseClassroomsOptions = {}):
     return true;
   }, []);
 
-  return { classrooms, loading, error, refetch, createClassroom, joinClassroom, updateClassroom, deleteClassroom, creating, joining };
+  return { classrooms, loading, error, refetch, createClassroom, joinClassroom, leaveClassroom, updateClassroom, deleteClassroom, creating, joining, leaving };
 }
