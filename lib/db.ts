@@ -258,6 +258,56 @@ export async function deleteSubmissionsByAssignmentId(assignmentId: string): Pro
   return result.deletedCount;
 }
 
+export async function deleteSubmissionsByStudentId(studentId: string): Promise<number> {
+  const db = await getDb();
+  const result = await db.collection("submissions").deleteMany({ studentId });
+  return result.deletedCount;
+}
+
+// Delete all assignments belonging to a classroom and return their IDs (for cascading to submissions).
+export async function deleteAssignmentsByClassroomId(classroomId: string): Promise<string[]> {
+  const db = await getDb();
+  const assignments = await db
+    .collection("assignments")
+    .find({ classroomId }, { projection: { _id: 1 } })
+    .toArray();
+  const ids = assignments.map((a) => (a._id as ObjectId).toHexString());
+  if (ids.length > 0) {
+    await db.collection("assignments").deleteMany({ classroomId });
+  }
+  return ids;
+}
+
+// Delete all submissions for a set of assignment IDs (used after deleteAssignmentsByClassroomId).
+export async function deleteSubmissionsByAssignmentIds(assignmentIds: string[]): Promise<number> {
+  if (assignmentIds.length === 0) return 0;
+  const db = await getDb();
+  const result = await db.collection("submissions").deleteMany({ assignmentId: { $in: assignmentIds } });
+  return result.deletedCount;
+}
+
+// Delete a user and cascade: remove from classroom memberIds, delete their submissions.
+export async function deleteUser(id: string): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.collection("users").deleteOne({ _id: new ObjectId(id) });
+  if (result.deletedCount === 0) return false;
+  await Promise.all([
+    db.collection("classrooms").updateMany({}, { $pull: { memberIds: id } } as Record<string, unknown>),
+    db.collection("submissions").deleteMany({ studentId: id }),
+  ]);
+  return true;
+}
+
+// Delete a classroom and cascade: delete its assignments and all related submissions.
+export async function deleteClassroomCascade(id: string): Promise<boolean> {
+  const db = await getDb();
+  const deleted = await db.collection("classrooms").deleteOne({ _id: new ObjectId(id) });
+  if (deleted.deletedCount === 0) return false;
+  const assignmentIds = await deleteAssignmentsByClassroomId(id);
+  await deleteSubmissionsByAssignmentIds(assignmentIds);
+  return true;
+}
+
 // ─── Backward-compat aliases ──────────────────────────────────────────────────
 // Used by /api/auth, /api/students, /api/submissions, /api/streaks routes.
 export const findStudents = findUsers;

@@ -29,9 +29,14 @@ export async function POST(req: NextRequest) {
 
   const submittedAt = new Date().toISOString();
 
-  // Determine if late
+  // Determine if late — a submission is late only after end-of-day (23:59:59 UTC) on the due date
   const assignment = await findAssignmentById(assignmentId);
-  const isLate = assignment ? new Date(submittedAt) > new Date(assignment.dueDate) : false;
+  let isLate = false;
+  if (assignment) {
+    const dueEnd = new Date(assignment.dueDate);
+    dueEnd.setUTCHours(23, 59, 59, 999);
+    isLate = new Date(submittedAt) > dueEnd;
+  }
 
   const submission = await createSubmission({ studentId, assignmentId, link, submittedAt, isLate });
 

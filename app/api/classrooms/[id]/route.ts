@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateClassroom, deleteClassroom, findClassroomById, findUserById } from "../../../../lib/db";
+import { updateClassroom, deleteClassroomCascade, findClassroomById, findUserById } from "../../../../lib/db";
 
 // Verify the caller is an admin who owns this classroom.
 async function verifyOwner(classroomId: string, adminId?: string): Promise<{ error: NextResponse } | { classroom: Awaited<ReturnType<typeof findClassroomById>> }> {
@@ -37,7 +37,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const check = await verifyOwner(id, body.adminId);
   if ("error" in check) return check.error;
 
-  const deleted = await deleteClassroom(id);
+  const deleted = await deleteClassroomCascade(id);
   if (!deleted) return NextResponse.json({ error: "Classroom not found" }, { status: 404 });
   return NextResponse.json({ success: true });
 }
