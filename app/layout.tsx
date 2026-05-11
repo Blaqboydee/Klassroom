@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? "https://klassroom.vercel.app"),
   title: "Klassroom",
   description: "A playful learning platform where students earn streaks for completing assignments on time, fostering consistency and friendly competition.",
 };
