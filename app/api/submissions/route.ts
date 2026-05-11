@@ -61,14 +61,23 @@ export async function POST(req: NextRequest) {
       (a) => new Date(a.dueDate) <= now || submittedSet.has(a.id)
     );
 
-    // Walk backwards: count consecutive submitted assignments until first gap
+    // Build a map of assignmentId → isLate for quick lookup
+    const lateSet = new Set(allSubmissions.filter((s) => s.isLate).map((s) => s.assignmentId));
+
+    // Walk backwards through past assignments:
+    // - on-time submission  → increment streak
+    // - late submission     → skip (preserves streak, doesn't extend it)
+    // - not submitted       → break
     let streak = 0;
     for (let i = pastAssignments.length - 1; i >= 0; i--) {
-      if (submittedSet.has(pastAssignments[i].id)) {
-        streak++;
-      } else {
-        break;
+      const aid = pastAssignments[i].id;
+      if (!submittedSet.has(aid)) {
+        break; // gap — streak ends
       }
+      if (!lateSet.has(aid)) {
+        streak++; // on time — counts
+      }
+      // late — fills the gap but doesn't increment; keep walking back
     }
 
     await updateStudent(studentId, { streak, lastSubmissionDate: submittedAt.slice(0, 10) });
