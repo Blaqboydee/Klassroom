@@ -25,7 +25,7 @@ A classroom management platform for instructors and students. Admins post assign
 - **Auth** — bcryptjs password hashing, session stored in `localStorage`
 - **Email** — Resend
 - **Language** — TypeScript (strict)
-- **Styling** — Custom CSS (no UI library)
+- **Styling** — Tailwind CSS v4 + custom CSS component classes
 
 ---
 
