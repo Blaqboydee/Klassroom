@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useStudents } from "@/hooks/useStudents";
@@ -12,10 +12,9 @@ interface SessionUser { id: string; name: string; role: "student" | "admin"; }
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const pathname = usePathname();
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
 
-  // Read session from localStorage (set by login/signup page)
   useEffect(() => {
     try {
       const raw = localStorage.getItem("klassroom_user");
@@ -26,66 +25,29 @@ export default function AdminDashboard() {
   const { students, loading: studentsLoading } = useStudents();
   const { classrooms, loading: classroomsLoading, creating: creatingClassroom, createClassroom, updateClassroom, deleteClassroom } = useClassrooms({ adminId: currentUser?.id });
 
-  const [selectedClassroomId, setSelectedClassroomId] = useState<string | null>(null);
-  // Auto-select first classroom once loaded
-  useEffect(() => {
-    if (classrooms.length > 0 && !selectedClassroomId) {
-      setSelectedClassroomId(classrooms[0].id);
-    }
-  }, [classrooms, selectedClassroomId]);
+  const classroomIds = classrooms.map((c) => c.id);
+  const { assignments, loading: assignmentsLoading } = useAssignments({ classroomIds });
+  const { submissions } = useSubmissions({ classroomIds });
 
-  const { assignments, loading: assignmentsLoading, createAssignment, updateAssignment, deleteAssignment, creating } = useAssignments(
-    selectedClassroomId ? { classroomId: selectedClassroomId } : { classroomIds: [] }
-  );
-  const { submissions, refetch: refetchSubmissions } = useSubmissions(
-    { classroomIds: classrooms.map((c) => c.id) }
-  );
+  const allMemberIds = new Set(classrooms.flatMap((c) => c.memberIds));
+  const totalStudents = studentsLoading ? null : students.filter((s) => allMemberIds.has(s.id)).length;
+  const activeStudents = studentsLoading ? null : students.filter((s) => allMemberIds.has(s.id) && s.streak > 0).length;
 
-  // Poll submissions every 10 seconds so the grid updates without a manual refresh
-  const refetchRef = useRef(refetchSubmissions);
-  useEffect(() => { refetchRef.current = refetchSubmissions; }, [refetchSubmissions]);
-  useEffect(() => {
-    const interval = setInterval(() => refetchRef.current(), 10_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const [form, setForm] = useState({ title: "", description: "", dueDate: "" });
-  const [created, setCreated] = useState(false);
   const [classroomName, setClassroomName] = useState("");
-  const [classroomCreated, setClassroomCreated] = useState<string | null>(null); // stores the new code
+  const [classroomCreated, setClassroomCreated] = useState<string | null>(null);
+  const [showCreateClassroom, setShowCreateClassroom] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+  const [navOpen, setNavOpen] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
 
-  // Modal state
   type ModalState =
     | { type: "deleteClassroom"; id: string; label: string }
-    | { type: "deleteAssignment"; id: string; label: string }
     | { type: "editClassroom"; id: string; currentName: string }
-    | { type: "editAssignment"; id: string; currentTitle: string; currentDescription: string; currentDueDate: string }
     | null;
   const [modal, setModal] = useState<ModalState>(null);
   const [modalInput, setModalInput] = useState("");
-  const [modalDateInput, setModalDateInput] = useState("");
-  const [modalDescInput, setModalDescInput] = useState("");
   const [modalWorking, setModalWorking] = useState(false);
-
-  // Build submission lookup: `${studentId}:${assignmentId}` → link
-  const submissionLinkMap = new Map(submissions.map((s) => [`${s.studentId}:${s.assignmentId}`, s.link]));
-
-  // Only show students enrolled in the selected classroom
-  const selectedClassroom = classrooms.find((c) => c.id === selectedClassroomId);
-  const enrolledStudents = selectedClassroom
-    ? students.filter((s) => selectedClassroom.memberIds.includes(s.id))
-    : [];
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.title.trim() || !form.dueDate || !selectedClassroomId) return;
-    const result = await createAssignment({ classroomId: selectedClassroomId, title: form.title, description: form.description, dueDate: form.dueDate });
-    if (result) {
-      setForm({ title: "", description: "", dueDate: "" });
-      setCreated(true);
-      setTimeout(() => setCreated(false), 2500);
-    }
-  }
 
   async function handleCreateClassroom(e: React.FormEvent) {
     e.preventDefault();
@@ -99,40 +61,14 @@ export default function AdminDashboard() {
     }
   }
 
-  const totalSubmissions = submissions.length;
-  const activeStudents = enrolledStudents.filter((s) => s.streak > 0).length;
-  const [navOpen, setNavOpen] = useState(false);
-  const [showCreateClassroom, setShowCreateClassroom] = useState(false);
-  const [showSignOutModal, setShowSignOutModal] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  function handleCopyCode(id: string, code: string) {
-    navigator.clipboard.writeText(code);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  }
-
-  function handleSignOut() {
-    try { localStorage.removeItem("klassroom_user"); } catch { /* ignore */ }
-    router.push("/login");
-  }
-
   async function handleModalConfirm() {
     if (!modal) return;
     setModalWorking(true);
     try {
       if (modal.type === "deleteClassroom") {
         await deleteClassroom(modal.id);
-      } else if (modal.type === "deleteAssignment") {
-        await deleteAssignment(modal.id);
       } else if (modal.type === "editClassroom") {
         if (modalInput.trim()) await updateClassroom(modal.id, modalInput.trim());
-      } else if (modal.type === "editAssignment") {
-        await updateAssignment(modal.id, {
-          title: modalInput.trim() || undefined,
-          description: modalDescInput,
-          dueDate: modalDateInput || undefined,
-        });
       }
     } finally {
       setModalWorking(false);
@@ -140,32 +76,32 @@ export default function AdminDashboard() {
     }
   }
 
-  function openEditClassroom(id: string, name: string) {
-    setModalInput(name);
-    setModal({ type: "editClassroom", id, currentName: name });
+  function handleCopyCode(id: string, code: string) {
+    navigator.clipboard.writeText(code);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   }
-  function openDeleteClassroom(id: string, name: string) {
-    setModal({ type: "deleteClassroom", id, label: name });
+
+  function handleCopyLink(id: string, code: string) {
+    navigator.clipboard.writeText(`${window.location.origin}/join/${code}`);
+    setCopiedLinkId(id);
+    setTimeout(() => setCopiedLinkId(null), 2000);
   }
-  function openEditAssignment(id: string, title: string, description: string, dueDate: string) {
-    setModalInput(title);
-    setModalDescInput(description);
-    setModalDateInput(dueDate);
-    setModal({ type: "editAssignment", id, currentTitle: title, currentDescription: description, currentDueDate: dueDate });
-  }
-  function openDeleteAssignment(id: string, title: string) {
-    setModal({ type: "deleteAssignment", id, label: title });
+
+  function handleSignOut() {
+    try { localStorage.removeItem("klassroom_user"); } catch { /* ignore */ }
+    router.push("/login");
   }
 
   return (
     <>
-
-
-      {/* Nav */}
       <nav className="dash-nav">
         <Link href="/dashboard/admin" className="brand">Klass<span>room</span></Link>
         <div className="nav-links">
-          <Link href="/dashboard/admin" className={`nav-link-dash${pathname === "/dashboard/admin" ? " active" : ""}`}>Dashboard</Link>
+          <Link href="/dashboard/admin" className={`nav-link-dash${pathname === "/dashboard/admin" ? " active" : ""}`}>Overview</Link>
+          <Link href="/dashboard/admin/assignments" className={`nav-link-dash${pathname === "/dashboard/admin/assignments" ? " active" : ""}`}>Assignments</Link>
+          <Link href="/dashboard/admin/announcements" className={`nav-link-dash${pathname === "/dashboard/admin/announcements" ? " active" : ""}`}>Announcements</Link>
+          <Link href="/dashboard/admin/challenges" className={`nav-link-dash${pathname === "/dashboard/admin/challenges" ? " active" : ""}`}>Challenges</Link>
           <Link href="/live" className={`nav-link-dash${pathname === "/live" ? " active" : ""}`}>Live board</Link>
           <button className="nav-signout" onClick={() => setShowSignOutModal(true)}>Sign out</button>
         </div>
@@ -178,40 +114,55 @@ export default function AdminDashboard() {
       </nav>
       {navOpen && (
         <div className="nav-drawer">
-          <Link href="/dashboard/admin" className={`nav-link-dash${pathname === "/dashboard/admin" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Dashboard</Link>
+          <Link href="/dashboard/admin" className={`nav-link-dash${pathname === "/dashboard/admin" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Overview</Link>
+          <Link href="/dashboard/admin/assignments" className={`nav-link-dash${pathname === "/dashboard/admin/assignments" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Assignments</Link>
+          <Link href="/dashboard/admin/announcements" className={`nav-link-dash${pathname === "/dashboard/admin/announcements" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Announcements</Link>
+          <Link href="/dashboard/admin/challenges" className={`nav-link-dash${pathname === "/dashboard/admin/challenges" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Challenges</Link>
           <Link href="/live" className={`nav-link-dash${pathname === "/live" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Live board</Link>
           <button className="nav-signout" onClick={() => { setNavOpen(false); setShowSignOutModal(true); }}>Sign out</button>
         </div>
       )}
 
       <main className="page">
-        {/* Header */}
         <div className="page-header">
           <h1 className="greeting">Welcome back, {currentUser?.name ?? "Instructor"}</h1>
           <p className="greeting-sub">Instructor Dashboard</p>
         </div>
 
-        {/* Stats */}
         <div className="stats-row">
           <div className="stat-card">
-            <div className="stat-num">{studentsLoading ? <span className="skeleton w-8 h-7 inline-block" /> : enrolledStudents.length}</div>
+            <div className="stat-num">{classroomsLoading ? <span className="skeleton w-8 h-7 inline-block" /> : classrooms.length}</div>
+            <div className="stat-label">classrooms</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-num">{studentsLoading ? <span className="skeleton w-8 h-7 inline-block" /> : totalStudents ?? 0}</div>
             <div className="stat-label">students enrolled</div>
           </div>
           <div className="stat-card">
             <div className="stat-num">{assignmentsLoading ? <span className="skeleton w-8 h-7 inline-block" /> : assignments.length}</div>
-            <div className="stat-label">assignments posted</div>
+            <div className="stat-label">assignments</div>
           </div>
           <div className="stat-card">
-            <div className="stat-num">{totalSubmissions}</div>
+            <div className="stat-num">{submissions.length}</div>
             <div className="stat-label">total submissions</div>
           </div>
           <div className="stat-card">
-            <div className="stat-num">{activeStudents}</div>
-            <div className="stat-label">students with active streak</div>
+            <div className="stat-num">{studentsLoading ? <span className="skeleton w-8 h-7 inline-block" /> : activeStudents ?? 0}</div>
+            <div className="stat-label">active streaks</div>
           </div>
         </div>
 
-        {/* Classrooms */}
+        <div className="flex gap-3 mb-6 flex-wrap">
+          <Link href="/dashboard/admin/assignments" className="create-btn" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            New assignment
+          </Link>
+          <Link href="/dashboard/admin/announcements" className="create-btn" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, background: "var(--color-paper-2)", color: "var(--color-ink-2)", borderColor: "var(--color-border)" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Post announcement
+          </Link>
+        </div>
+
         <div className="section-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span>Your classrooms</span>
           <button
@@ -223,6 +174,7 @@ export default function AdminDashboard() {
             {showCreateClassroom ? "Cancel" : "+ New classroom"}
           </button>
         </div>
+
         {showCreateClassroom && (
           <div className="card" style={{ marginBottom: 12 }}>
             <div className="card-body">
@@ -236,26 +188,24 @@ export default function AdminDashboard() {
                   disabled={creatingClassroom || !currentUser}
                   autoFocus
                 />
-                <button
-                  type="submit"
-                  className="create-btn whitespace-nowrap"
-                  disabled={creatingClassroom || !classroomName.trim() || !currentUser}
-                >
-                  {creatingClassroom ? "Creating…" : "Create"}
+                <button type="submit" className="create-btn whitespace-nowrap" disabled={creatingClassroom || !classroomName.trim() || !currentUser}>
+                  {creatingClassroom ? "Creating..." : "Create"}
                 </button>
               </form>
             </div>
           </div>
         )}
+
         {classroomCreated && (
           <p className="success-msg" style={{ marginBottom: 10 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            Classroom created! Share code <span className="font-mono tracking-[0.1em]">{classroomCreated}</span> with your students.
+            Classroom created! Share code <span className="font-mono tracking-widest">{classroomCreated}</span> with your students.
           </p>
         )}
+
         {classroomsLoading ? (
           <div className="classroom-grid mb-4">
-            {[0,1,2].map((i) => (
+            {[0, 1, 2].map((i) => (
               <div key={i} className="classroom-card">
                 <span className="skeleton h-5 w-32 block mb-2" />
                 <span className="skeleton h-6 w-16 block rounded-full" />
@@ -263,235 +213,43 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
-        ) : classrooms.length > 0 && (
+        ) : classrooms.length === 0 ? (
+          <p className="text-[13px] text-ink-3 mt-2">No classrooms yet. Create one above to get started.</p>
+        ) : (
           <div className="classroom-grid">
             {classrooms.map((c) => (
-             <div key={c.id} className="classroom-card" style={{ minWidth: 0, overflow: "hidden" }}>
-  <div
-    className="classroom-name"
-    style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-  >
-    {c.name}
-  </div>
-
-  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", marginTop: "6px" }}>
-    <span className="code-badge">{c.code}</span>
-
-    <button className="copy-btn" title="Copy join code" onClick={() => handleCopyCode(c.id, c.code)}>
-      {copiedId === c.id
-        ? <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.02em", color: "var(--color-teal)" }}>Copied!</span>
-        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-          </svg>
-      }
-    </button>
-
-    <button className="copy-btn" title="Rename classroom" onClick={() => openEditClassroom(c.id, c.name)}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-      </svg>
-    </button>
-
-    <button
-      className="copy-btn"
-      title="Delete classroom"
-      style={{ color: "#dc2626" }}
-      onClick={() => openDeleteClassroom(c.id, c.name)}
-    >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="3 6 5 6 21 6"/>
-        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-        <path d="M10 11v6M14 11v6"/>
-        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-      </svg>
-    </button>
-  </div>
-
-  <div className="classroom-meta" style={{ marginTop: "8px" }}>
-    {c.memberIds.length} student{c.memberIds.length !== 1 ? "s" : ""} enrolled
-  </div>
-</div>
+              <div key={c.id} className="classroom-card" style={{ minWidth: 0, overflow: "hidden" }}>
+                <div className="classroom-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", marginTop: "6px" }}>
+                  <span className="code-badge">{c.code}</span>
+                  <button className="copy-btn" title="Copy join code" onClick={() => handleCopyCode(c.id, c.code)}>
+                    {copiedId === c.id
+                      ? <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.02em", color: "var(--color-teal)" }}>Copied!</span>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                    }
+                  </button>
+                  <button className="copy-btn" title="Copy invite link" onClick={() => handleCopyLink(c.id, c.code)}>
+                    {copiedLinkId === c.id
+                      ? <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.02em", color: "var(--color-teal)" }}>Link copied!</span>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    }
+                  </button>
+                  <button className="copy-btn" title="Rename classroom" onClick={() => { setModalInput(c.name); setModal({ type: "editClassroom", id: c.id, currentName: c.name }); }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  <button className="copy-btn" title="Delete classroom" style={{ color: "#dc2626" }} onClick={() => setModal({ type: "deleteClassroom", id: c.id, label: c.name })}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                  </button>
+                </div>
+                <div className="classroom-meta" style={{ marginTop: "8px" }}>{c.memberIds.length} student{c.memberIds.length !== 1 ? "s" : ""} enrolled</div>
+              </div>
             ))}
           </div>
         )}
-        {/* Create Assignment */}
-        <div className="section-label">Create assignment</div>
-        <div className="card">
-          <div className="card-body">
-            {classrooms.length > 1 && (
-                <div className="mb-[10px]">
-                <select
-                  className="form-input"
-                  value={selectedClassroomId ?? ""}
-                  onChange={(e) => setSelectedClassroomId(e.target.value)}
-                >
-                  {classrooms.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {classrooms.length === 0 && (
-              <p className="text-[13px] text-ink-3 mb-[10px]">Create a classroom first before adding assignments.</p>
-            )}
-            <form onSubmit={handleCreate}>
-              <div className="form-grid">
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Title"
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  disabled={creating || !selectedClassroomId}
-                />
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-ink-3 font-medium uppercase tracking-wide pl-0.5">Due date</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={form.dueDate}
-                    onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-                    disabled={creating || !selectedClassroomId}
-                  />
-                </div>
-              </div>
-              <textarea
-                className="form-textarea"
-                placeholder="Description (optional)"
-                rows={2}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                disabled={creating || !selectedClassroomId}
-              />
-              <div className="form-actions">
-                {created && (
-                  <span className="success-msg">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Assignment created
-                  </span>
-                )}
-                <button className="create-btn" type="submit" disabled={creating || !form.title.trim() || !form.dueDate || !selectedClassroomId}>
-                  {creating ? "Creating…" : "Create"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        {/* Submission Matrix */}
-        <div className="section-label">Submission overview</div>
-        <div className="overflow-x-auto border border-border rounded-2xl mb-3">
-            {studentsLoading || assignmentsLoading ? (
-              <div className="flex flex-col gap-3 p-5">
-                {[0,1,2,3].map((i) => (
-                  <div key={i} className="flex gap-4 items-center">
-                    <span className="skeleton h-4 w-32 block" />
-                    <span className="skeleton h-4 w-12 block" />
-                    <span className="skeleton h-4 w-20 block" />
-                    <span className="skeleton h-4 w-10 block" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th className="center">Streak</th>
-                  <th className="center">Last active</th>
-                  {assignments.map((a) => (
-                    <th key={a.id} className="center">
-                      <span className="block overflow-hidden text-ellipsis whitespace-nowrap">
-                        {a.title}
-                      </span>
-                      <div className="flex items-center justify-center gap-1 mt-0.5">
-                        <button
-                          title="Edit assignment"
-                          style={{ color: "var(--color-ink-3)", background: "none", border: "none", cursor: "pointer", padding: "2px" }}
-                          onClick={() => openEditAssignment(a.id, a.title, a.description ?? "", a.dueDate)}
-                        >
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                          </svg>
-                        </button>
-                        <button
-                          title="Delete assignment"
-                          style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: "2px" }}
-                          onClick={() => openDeleteAssignment(a.id, a.title)}
-                        >
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6"/>
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                            <path d="M10 11v6M14 11v6"/>
-                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                          </svg>
-                        </button>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {enrolledStudents.length === 0 ? (
-                  <tr><td colSpan={3 + assignments.length} className="text-center text-ink-3 py-8 text-[13px]">{selectedClassroomId ? "No students enrolled in this classroom yet." : "Select a classroom to see submissions."}</td></tr>
-                ) : enrolledStudents.map((s) => (
-                  <tr key={s.id}>
-                    <td>
-                      <div className="student-name">{s.name}</div>
-                      <div className="student-email">{s.email}</div>
-                    </td>
-                    <td className="center">
-                      <span className={`streak-badge ${s.streak > 0 ? "streak-active" : "streak-dead"}`}>
-                        {s.streak > 0
-                          ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"/></svg>
-                          : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
-                        }
-                        {s.streak}
-                      </span>
-                    </td>
-                    <td className="center" style={{ fontFamily: "var(--mono)", fontSize: 11 }}>{s.lastSubmissionDate ?? "–"}</td>
-                    {assignments.map((a) => {
-                      const link = submissionLinkMap.get(`${s.id}:${a.id}`);
-                      return (
-                        <td key={a.id} className="center">
-                          {link
-                            ? (
-                              <a
-                                href={link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={link}
-                                className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-teal-light text-teal hover:bg-teal hover:text-white transition-colors"
-                              >
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                                  <polyline points="15 3 21 3 21 9"/>
-                                  <line x1="10" y1="14" x2="21" y2="3"/>
-                                </svg>
-                              </a>
-                            )
-                            : <span className="dot-no">–</span>
-                          }
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            )}
-        </div>
       </main>
 
-      {/* Sign-out confirmation modal */}
       {showSignOutModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.35)]"
-          onClick={(e) => { if (e.target === e.currentTarget) setShowSignOutModal(false); }}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.35)]" onClick={(e) => { if (e.target === e.currentTarget) setShowSignOutModal(false); }}>
           <div className="bg-paper border border-border rounded-2xl shadow-xl w-full max-w-[360px] mx-4 p-6 flex flex-col gap-5">
             <div>
               <h2 className="font-serif text-[20px] text-ink leading-tight mb-1">Sign out?</h2>
@@ -505,95 +263,28 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Confirm / Edit Modal */}
       {modal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.35)]"
-          onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.35)]" onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}>
           <div className="bg-paper border border-border rounded-2xl shadow-xl w-full max-w-[420px] mx-4 p-6 flex flex-col gap-5">
-            {/* Delete modals */}
-            {(modal.type === "deleteClassroom" || modal.type === "deleteAssignment") && (
+            {modal.type === "deleteClassroom" && (
               <>
                 <div>
-                  <h2 className="font-serif text-[20px] text-ink leading-tight mb-1">
-                    Delete {modal.type === "deleteClassroom" ? "classroom" : "assignment"}?
-                  </h2>
-                  <p className="text-[13px] text-ink-3">
-                    <span className="font-medium text-ink">&ldquo;{modal.label}&rdquo;</span> will be permanently deleted. This cannot be undone.
-                  </p>
+                  <h2 className="font-serif text-[20px] text-ink leading-tight mb-1">Delete classroom?</h2>
+                  <p className="text-[13px] text-ink-3"><span className="font-medium text-ink">&ldquo;{modal.label}&rdquo;</span> will be permanently deleted. This cannot be undone.</p>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <button className="px-4 py-2 rounded-lg border border-border text-ink-2 text-[14px] font-medium bg-paper-2 hover:bg-paper-3 transition-colors" onClick={() => setModal(null)} disabled={modalWorking}>Cancel</button>
-                  <button
-                    className="btn-primary"
-                    style={{ background: "#dc2626", borderColor: "#dc2626", padding: "8px 18px", fontSize: 14 }}
-                    onClick={handleModalConfirm}
-                    disabled={modalWorking}
-                  >
-                    {modalWorking ? "Deleting…" : "Delete"}
-                  </button>
+                  <button className="btn-primary" style={{ background: "#dc2626", borderColor: "#dc2626", padding: "8px 18px", fontSize: 14 }} onClick={handleModalConfirm} disabled={modalWorking}>{modalWorking ? "Deleting..." : "Delete"}</button>
                 </div>
               </>
             )}
-
-            {/* Edit classroom modal */}
             {modal.type === "editClassroom" && (
               <>
-                <div>
-                  <h2 className="font-serif text-[20px] text-ink leading-tight mb-1">Rename classroom</h2>
-                </div>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={modalInput}
-                  onChange={(e) => setModalInput(e.target.value)}
-                  placeholder="Classroom name"
-                  autoFocus
-                />
+                <h2 className="font-serif text-[20px] text-ink leading-tight">Rename classroom</h2>
+                <input type="text" className="form-input" value={modalInput} onChange={(e) => setModalInput(e.target.value)} placeholder="Classroom name" autoFocus />
                 <div className="flex gap-2 justify-end">
                   <button className="px-4 py-2 rounded-lg border border-border text-ink-2 text-[14px] font-medium bg-paper-2 hover:bg-paper-3 transition-colors" onClick={() => setModal(null)} disabled={modalWorking}>Cancel</button>
-                  <button className="btn-primary" style={{ padding: "8px 18px", fontSize: 14 }} onClick={handleModalConfirm} disabled={modalWorking || !modalInput.trim()}>
-                    {modalWorking ? "Saving…" : "Save"}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* Edit assignment modal */}
-            {modal.type === "editAssignment" && (
-              <>
-                <div>
-                  <h2 className="font-serif text-[20px] text-ink leading-tight mb-1">Edit assignment</h2>
-                </div>
-                <div className="flex flex-col gap-3">
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={modalInput}
-                    onChange={(e) => setModalInput(e.target.value)}
-                    placeholder="Title"
-                    autoFocus
-                  />
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={modalDateInput}
-                    onChange={(e) => setModalDateInput(e.target.value)}
-                  />
-                  <textarea
-                    className="form-textarea"
-                    rows={2}
-                    value={modalDescInput}
-                    onChange={(e) => setModalDescInput(e.target.value)}
-                    placeholder="Description (optional)"
-                  />
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <button className="px-4 py-2 rounded-lg border border-border text-ink-2 text-[14px] font-medium bg-paper-2 hover:bg-paper-3 transition-colors" onClick={() => setModal(null)} disabled={modalWorking}>Cancel</button>
-                  <button className="btn-primary" style={{ padding: "8px 18px", fontSize: 14 }} onClick={handleModalConfirm} disabled={modalWorking || !modalInput.trim()}>
-                    {modalWorking ? "Saving…" : "Save"}
-                  </button>
+                  <button className="btn-primary" style={{ padding: "8px 18px", fontSize: 14 }} onClick={handleModalConfirm} disabled={modalWorking || !modalInput.trim()}>{modalWorking ? "Saving..." : "Save"}</button>
                 </div>
               </>
             )}

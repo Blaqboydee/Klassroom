@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findAssignments, findAssignmentsByClassroomIds, createAssignment } from "../../../lib/db";
+import { findAssignments, findAssignmentsByClassroomIds, createAssignment, findClassroomById, findUsersByIds } from "../../../lib/db";
+import { sendNewAssignmentEmails } from "../../../lib/email";
 
 // GET /api/assignments — list assignments, filtered by ?classroomId= (single or multiple)
 // Requires at least one classroomId — returns empty array otherwise to prevent data leaking.
@@ -42,5 +43,13 @@ export async function POST(req: NextRequest) {
     dueDate,
     createdAt: new Date().toISOString(),
   });
+
+  // Fire-and-forget: email enrolled students who opted in
+  findClassroomById(classroomId).then(async (classroom) => {
+    if (!classroom || classroom.memberIds.length === 0) return;
+    const students = await findUsersByIds(classroom.memberIds);
+    sendNewAssignmentEmails(students, classroom, assignment).catch(() => { /* non-fatal */ });
+  }).catch(() => { /* non-fatal */ });
+
   return NextResponse.json({ assignment }, { status: 201 });
 }

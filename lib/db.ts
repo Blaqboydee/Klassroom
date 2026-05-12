@@ -7,6 +7,8 @@ import type { User } from "@/models/User";
 import type { Classroom } from "@/models/Classroom";
 import type { Assignment } from "@/models/Assignment";
 import type { Submission } from "@/models/Submission";
+import type { Announcement } from "@/models/Announcement";
+import type { Challenge, ChallengeSubmission } from "@/models/Challenge";
 
 const uri = process.env.MONGODB_URI;
 if (!uri) throw new Error("Missing MONGODB_URI environment variable");
@@ -60,6 +62,14 @@ export async function findUserByEmail(email: string): Promise<User | null> {
   const doc = await db.collection("users").findOne({ email: email.toLowerCase() });
   if (!doc) return null;
   return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as User;
+}
+
+export async function findUsersByIds(ids: string[]): Promise<User[]> {
+  if (ids.length === 0) return [];
+  const db = await getDb();
+  const objectIds = ids.map((id) => new ObjectId(id));
+  const docs = await db.collection("users").find({ _id: { $in: objectIds } }).toArray();
+  return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as User);
 }
 
 export async function createUser(data: Omit<User, "id">): Promise<User> {
@@ -240,11 +250,11 @@ export async function findSubmissionById(id: string): Promise<Submission | null>
   return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as Submission;
 }
 
-export async function updateSubmission(id: string, link: string): Promise<Submission | null> {
+export async function updateSubmission(id: string, data: { link?: string; grade?: string; feedback?: string }): Promise<Submission | null> {
   const db = await getDb();
   const result = await db.collection("submissions").findOneAndUpdate(
     { _id: new ObjectId(id) },
-    { $set: { link } },
+    { $set: data },
     { returnDocument: "after" }
   );
   if (!result) return null;
@@ -320,3 +330,87 @@ export const findStudentById = findUserById;
 export const findStudentByEmail = findUserByEmail;
 export const createStudent = createUser;
 export const updateStudent = updateUser;
+
+// ─── Announcements ────────────────────────────────────────────────────────────
+
+export async function findAnnouncements(filter: { classroomIds: string[] }): Promise<Announcement[]> {
+  if (filter.classroomIds.length === 0) return [];
+  const db = await getDb();
+  const docs = await db
+    .collection("announcements")
+    .find({ classroomId: { $in: filter.classroomIds } })
+    .sort({ createdAt: -1 })
+    .toArray();
+  return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as Announcement);
+}
+
+export async function createAnnouncement(data: Omit<Announcement, "id">): Promise<Announcement> {
+  const db = await getDb();
+  const result = await db.collection("announcements").insertOne(data);
+  return { id: result.insertedId.toHexString(), ...data };
+}
+
+export async function deleteAnnouncement(id: string): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.collection("announcements").deleteOne({ _id: new ObjectId(id) });
+  return result.deletedCount === 1;
+}
+
+export async function deleteAnnouncementsByClassroomId(classroomId: string): Promise<number> {
+  const db = await getDb();
+  const result = await db.collection("announcements").deleteMany({ classroomId });
+  return result.deletedCount;
+}
+
+// ─── Challenges ───────────────────────────────────────────────────────────────
+
+export async function createChallenge(data: Omit<Challenge, "id">): Promise<Challenge> {
+  const db = await getDb();
+  const result = await db.collection("challenges").insertOne(data);
+  return { id: result.insertedId.toHexString(), ...data };
+}
+
+export async function findChallenges(filter: { classroomId: string }): Promise<Challenge[]> {
+  const db = await getDb();
+  const docs = await db.collection("challenges").find({ classroomId: filter.classroomId }).sort({ createdAt: -1 }).toArray();
+  return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as Challenge);
+}
+
+export async function findChallengeById(id: string): Promise<Challenge | null> {
+  const db = await getDb();
+  const doc = await db.collection("challenges").findOne({ _id: new ObjectId(id) });
+  if (!doc) return null;
+  return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as Challenge;
+}
+
+export async function updateChallenge(id: string, data: Partial<Omit<Challenge, "id">>): Promise<Challenge | null> {
+  const db = await getDb();
+  const result = await db.collection("challenges").findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set: data },
+    { returnDocument: "after" }
+  );
+  if (!result) return null;
+  return toId(result as Record<string, unknown> & { _id: ObjectId }) as unknown as Challenge;
+}
+
+// ─── Challenge Submissions ────────────────────────────────────────────────────
+
+export async function createChallengeSubmission(data: Omit<ChallengeSubmission, "id">): Promise<ChallengeSubmission> {
+  const db = await getDb();
+  const result = await db.collection("challengeSubmissions").insertOne(data);
+  return { id: result.insertedId.toHexString(), ...data };
+}
+
+export async function findChallengeSubmissions(challengeId: string): Promise<ChallengeSubmission[]> {
+  const db = await getDb();
+  const docs = await db.collection("challengeSubmissions").find({ challengeId }).sort({ submittedAt: 1 }).toArray();
+  return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as ChallengeSubmission);
+}
+
+export async function findChallengeSubmissionByStudent(challengeId: string, studentId: string): Promise<ChallengeSubmission | null> {
+  const db = await getDb();
+  const doc = await db.collection("challengeSubmissions").findOne({ challengeId, studentId });
+  if (!doc) return null;
+  return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as ChallengeSubmission;
+}

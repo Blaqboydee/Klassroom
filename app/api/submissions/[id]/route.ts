@@ -1,22 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findSubmissionById, updateSubmission, deleteSubmission, findSubmissions, findClassrooms, findAssignmentsByClassroomIds, findStudentById, updateStudent } from "../../../../lib/db";
+import { findSubmissionById, updateSubmission, deleteSubmission, findSubmissions, findClassrooms, findAssignmentsByClassroomIds, findStudentById, updateStudent, findAssignmentById, findClassroomById, findUserById } from "../../../../lib/db";
+import { sendGradedEmail } from "../../../../lib/email";
 
-// PATCH /api/submissions/[id] — student updates their submission link
+// PATCH /api/submissions/[id]
+//   Student updating link:     body = { link: string; studentId: string }
+//   Instructor grading:        body = { grade?: string; feedback?: string }
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const body = await req.json() as { link: string; studentId: string };
-  const { link, studentId } = body;
+  const body = await req.json() as { link?: string; studentId?: string; grade?: string; feedback?: string };
 
-  if (!link || !studentId) {
-    return NextResponse.json({ error: "link and studentId are required" }, { status: 400 });
+  // Student link update — requires studentId ownership check
+  if (body.studentId) {
+    const { link, studentId } = body;
+    if (!link || !studentId) {
+      return NextResponse.json({ error: "link and studentId are required" }, { status: 400 });
+    }
+    const existing = await findSubmissionById(id);
+    if (!existing) return NextResponse.json({ error: "Submission not found" }, { status: 404 });
+    if (existing.studentId !== studentId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const updated = await updateSubmission(id, { link: link.trim() });
+    return NextResponse.json({ submission: updated });
   }
 
-  const existing = await findSubmissionById(id);
-  if (!existing) return NextResponse.json({ error: "Submission not found" }, { status: 404 });
-  if (existing.studentId !== studentId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Instructor grading — grade and/or feedback
+  if (body.grade !== undefined || body.feedback !== undefined) {
+    const existing = await findSubmissionById(id);
+    if (!existing) return NextResponse.json({ error: "Submission not found" }, { status: 404 });
+    const updated = await updateSubmission(id, {
+      ...(body.grade !== undefined ? { grade: body.grade } : {}),
+      ...(body.feedback !== undefined ? { feedback: body.feedback } : {}),
+    });
 
-  const updated = await updateSubmission(id, link.trim());
-  return NextResponse.json({ submission: updated });
+    // Fire-and-forget: email the student if they opted in and a grade was set
+    if (body.grade !== undefined) {
+      Promise.all([
+        findUserById(existing.studentId),
+        findAssignmentById(existing.assignmentId),
+      ]).then(async ([student, assignment]) => {
+        if (!student || !assignment) return;
+        const classroom = await findClassroomById(assignment.classroomId);
+        if (!classroom) return;
+        sendGradedEmail(student, classroom, assignment, body.grade!, body.feedback).catch(() => { /* non-fatal */ });
+      }).catch(() => { /* non-fatal */ });
+    }
+
+    return NextResponse.json({ submission: updated });
+  }
+
+  return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 }
 
 // DELETE /api/submissions/[id] — student deletes their own submission and recalculates streak

@@ -9,6 +9,7 @@ import type { Classroom } from "@/models/Classroom";
 import type { User } from "@/models/User";
 import type { Assignment } from "@/models/Assignment";
 import type { Submission } from "@/models/Submission";
+import type { Challenge, ChallengeSubmission } from "@/models/Challenge";
 
 interface SessionUser { id: string; name: string; role: "student" | "admin"; }
 
@@ -92,6 +93,40 @@ function useLiveBoard(classroomId: string | null, memberIds: string[]) {
   return { rows, assignment, lastUpdated, error };
 }
 
+function useActiveChallenge(classroomId: string | null) {
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [challengeSubs, setChallengeSubs] = useState<ChallengeSubmission[]>([]);
+
+  const poll = useCallback(async () => {
+    if (!classroomId) return;
+    try {
+      const res = await fetch(`/api/challenges?classroomId=${encodeURIComponent(classroomId)}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const { challenges } = await res.json() as { challenges: Challenge[] };
+      const active = challenges.find((c) => c.status === "active") ?? null;
+      setChallenge(active);
+
+      if (active) {
+        const subRes = await fetch(`/api/challenges/${active.id}`, { cache: "no-store" });
+        if (subRes.ok) {
+          const { submissions } = await subRes.json() as { submissions: ChallengeSubmission[] };
+          setChallengeSubs(submissions);
+        }
+      } else {
+        setChallengeSubs([]);
+      }
+    } catch { /* ignore */ }
+  }, [classroomId]);
+
+  useEffect(() => {
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => clearInterval(interval);
+  }, [poll]);
+
+  return { challenge, challengeSubs };
+}
+
 export default function LiveBoardPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -131,6 +166,7 @@ export default function LiveBoardPage() {
   const memberIds = selectedClassroom?.memberIds ?? [];
 
   const { rows, assignment, lastUpdated, error } = useLiveBoard(selectedId, memberIds);
+  const { challenge, challengeSubs } = useActiveChallenge(selectedId);
 
   const submittedCount = rows.filter((r) => r.submission).length;
   const lateCount = rows.filter((r) => r.submission?.isLate).length;
@@ -288,6 +324,34 @@ export default function LiveBoardPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* Active challenge panel */}
+        {challenge && (
+          <div style={{ background: "rgba(13,148,136,0.06)", border: "1px solid rgba(13,148,136,0.25)", borderRadius: 16, padding: "20px 24px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--color-teal)", boxShadow: "0 0 0 3px rgba(13,148,136,0.25)" }} />
+              <span className="font-mono text-[11px] font-medium text-teal tracking-widest uppercase">Active Challenge</span>
+            </div>
+            <h2 className="font-serif text-[20px] text-ink mb-1">{challenge.title}</h2>
+            {challenge.description && <p className="text-[13px] text-ink-3 mb-2">{challenge.description}</p>}
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16, fontSize: 13 }}>
+              <span className="text-ink-3">⏱ {challenge.windowMinutes} min window</span>
+              {challenge.prize && <span className="text-ink-3">🏆 {challenge.prize}</span>}
+              <span className="text-ink-3">{challengeSubs.length} submission{challengeSubs.length !== 1 ? "s" : ""}</span>
+            </div>
+            {challengeSubs.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {challengeSubs.map((sub, i) => (
+                  <div key={sub.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 12px", background: i === 0 ? "rgba(13,148,136,0.1)" : "var(--color-paper)", borderRadius: 10, border: "1px solid var(--color-border)" }}>
+                    <span className="font-mono text-[12px] font-bold" style={{ color: i === 0 ? "var(--color-teal)" : "var(--color-ink)", opacity: i === 0 ? 1 : 0.4, minWidth: 24 }}>#{i + 1}</span>
+                    <span className="text-[13px] font-medium text-ink flex-1">{sub.studentName}</span>
+                    <span className="font-mono text-[11px] text-ink-3">{new Date(sub.submittedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         <p className="text-[12px] text-ink-3 font-mono text-center">

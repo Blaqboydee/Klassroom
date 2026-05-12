@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 type LoginState = "idle" | "loading" | "error" | "success";
@@ -39,6 +39,13 @@ export default function LoginPage() {
   const [state, setState] = useState<LoginState>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [navOpen, setNavOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const code = p.get("join");
+    if (code) setJoinCode(code.toUpperCase());
+  }, []);
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
@@ -67,6 +74,15 @@ export default function LoginPage() {
     const user = result.user;
     localStorage.setItem("klassroom_user", JSON.stringify({ id: user.id, name: user.name, role: user.role }));
     setState("success");
+
+    // If arriving from an invite link, join the classroom first
+    if (joinCode && user.role === "student") {
+      await fetch("/api/classrooms/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: joinCode, userId: user.id }),
+      }).catch(() => { /* non-fatal */ });
+    }
 
     setTimeout(() => {
       router.push(user.role === "admin" ? "/dashboard/admin" : "/dashboard/student");

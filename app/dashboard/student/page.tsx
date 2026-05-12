@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useSubmissions } from "@/hooks/useSubmissions";
 import { useClassrooms } from "@/hooks/useClassrooms";
+import type { Challenge, ChallengeSubmission } from "@/models/Challenge";
 
 interface SessionUser { id: string; name: string; role: "student" | "admin"; }
 
@@ -38,19 +39,38 @@ export default function StudentDashboard() {
   // Real streak fetched from the server (updated after each submission)
   const [streak, setStreak] = useState(0);
   const [streakLoading, setStreakLoading] = useState(false);
+  const [emailOptIn, setEmailOptIn] = useState<boolean | null>(null);
+  const [togglingEmail, setTogglingEmail] = useState(false);
 
   const fetchStreak = async (id: string) => {
     setStreakLoading(true);
     try {
       const res = await fetch(`/api/users/${encodeURIComponent(id)}`, { cache: "no-store" });
       if (res.ok) {
-        const data = await res.json() as { user: { streak: number } };
+        const data = await res.json() as { user: { streak: number; emailOptIn?: boolean } };
         setStreak(data.user.streak);
+        setEmailOptIn(data.user.emailOptIn ?? false);
       }
     } finally {
       setStreakLoading(false);
     }
   };
+
+  async function handleEmailOptInToggle() {
+    if (!studentId || togglingEmail) return;
+    const next = !emailOptIn;
+    setTogglingEmail(true);
+    try {
+      const res = await fetch(`/api/users/${studentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailOptIn: next }),
+      });
+      if (res.ok) setEmailOptIn(next);
+    } finally {
+      setTogglingEmail(false);
+    }
+  }
 
   useEffect(() => {
     if (studentId) fetchStreak(studentId);
@@ -86,6 +106,68 @@ export default function StudentDashboard() {
 
   const [navOpen, setNavOpen] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+
+  // ── Active challenge polling ────────────────────────────────────────────────
+  const [activeChallenge, setActiveChallenge] = useState<Challenge | null>(null);
+  const [challengeLink, setChallengeLink] = useState("");
+  const [challengeLinkError, setChallengeLinkError] = useState("");
+  const [challengeSubmitting, setChallengeSubmitting] = useState(false);
+  const [myChallengeSub, setMyChallengeSub] = useState<ChallengeSubmission | null>(null);
+  const [challengeSubmitSuccess, setChallengeSubmitSuccess] = useState(false);
+
+  const pollChallenge = useCallback(async () => {
+    if (enrolledClassroomIds.length === 0) return;
+    try {
+      const results = await Promise.all(
+        enrolledClassroomIds.map((id) =>
+          fetch(`/api/challenges?classroomId=${encodeURIComponent(id)}`, { cache: "no-store" })
+            .then((r) => r.ok ? r.json() as Promise<{ challenges: Challenge[] }> : { challenges: [] })
+        )
+      );
+      const allActive = results.flatMap((r) => r.challenges).filter((c) => c.status === "active");
+      const found = allActive[0] ?? null;
+      setActiveChallenge(found);
+      if (!found) { setMyChallengeSub(null); return; }
+      // Check if student already submitted
+      const subRes = await fetch(`/api/challenges/${found.id}`, { cache: "no-store" });
+      if (subRes.ok) {
+        const { submissions } = await subRes.json() as { submissions: ChallengeSubmission[] };
+        const mine = submissions.find((s) => s.studentId === studentId) ?? null;
+        setMyChallengeSub(mine);
+      }
+    } catch { /* ignore */ }
+  }, [enrolledClassroomIds, studentId]);
+
+  useEffect(() => {
+    pollChallenge();
+    const iv = setInterval(pollChallenge, 8000);
+    return () => clearInterval(iv);
+  }, [pollChallenge]);
+
+  async function handleChallengeSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!activeChallenge || !currentUser) return;
+    const err = validateLink(challengeLink);
+    if (err) { setChallengeLinkError(err); return; }
+    setChallengeLinkError("");
+    setChallengeSubmitting(true);
+    try {
+      const res = await fetch(`/api/challenges/${activeChallenge.id}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: currentUser.id, studentName: currentUser.name, link: challengeLink.trim() }),
+      });
+      if (res.status === 409) { setChallengeLinkError("You already submitted or the window has closed."); return; }
+      if (!res.ok) { setChallengeLinkError("Submission failed. Try again."); return; }
+      const { submission } = await res.json() as { submission: ChallengeSubmission };
+      setMyChallengeSub(submission);
+      setChallengeLink("");
+      setChallengeSubmitSuccess(true);
+      setTimeout(() => setChallengeSubmitSuccess(false), 3000);
+    } finally {
+      setChallengeSubmitting(false);
+    }
+  }
 
   function handleSignOut() {
     try { localStorage.removeItem("klassroom_user"); } catch { /* ignore */ }
@@ -167,6 +249,8 @@ export default function StudentDashboard() {
         <Link href="/dashboard/student" className="brand">Klass<span>room</span></Link>
         <div className="nav-links">
           <Link href="/dashboard/student" className={`nav-link-dash${pathname === "/dashboard/student" ? " active" : ""}`}>My assignments</Link>
+          <Link href="/dashboard/student/announcements" className={`nav-link-dash${pathname === "/dashboard/student/announcements" ? " active" : ""}`}>Announcements</Link>
+          <Link href="/dashboard/student/history" className={`nav-link-dash${pathname === "/dashboard/student/history" ? " active" : ""}`}>History</Link>
           <button className="nav-signout" onClick={() => setShowSignOutModal(true)}>Sign out</button>
         </div>
         <button className="nav-burger" aria-label={navOpen ? "Close menu" : "Open menu"} onClick={() => setNavOpen((o) => !o)}>
@@ -179,6 +263,8 @@ export default function StudentDashboard() {
       {navOpen && (
         <div className="nav-drawer">
           <Link href="/dashboard/student" className={`nav-link-dash${pathname === "/dashboard/student" ? " active" : ""}`} onClick={() => setNavOpen(false)}>My assignments</Link>
+          <Link href="/dashboard/student/announcements" className={`nav-link-dash${pathname === "/dashboard/student/announcements" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Announcements</Link>
+          <Link href="/dashboard/student/history" className={`nav-link-dash${pathname === "/dashboard/student/history" ? " active" : ""}`} onClick={() => setNavOpen(false)}>History</Link>
           <button className="nav-signout" onClick={() => { setNavOpen(false); setShowSignOutModal(true); }}>Sign out</button>
         </div>
       )}
@@ -214,6 +300,71 @@ export default function StudentDashboard() {
             <div className="stat-label">total assignments</div>
           </div>
         </div>
+
+        {/* Active challenge banner */}
+        {activeChallenge && (
+          <div style={{ background: "rgba(13,148,136,0.07)", border: "1px solid rgba(13,148,136,0.3)", borderRadius: 14, padding: "18px 20px", marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--color-teal)", boxShadow: "0 0 0 3px rgba(13,148,136,0.25)" }} />
+              <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--color-teal)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Live Challenge</span>
+            </div>
+            <p style={{ margin: "0 0 4px", fontFamily: "var(--font-serif)", fontSize: 18, fontWeight: 700, color: "var(--color-ink)" }}>{activeChallenge.title}</p>
+            {activeChallenge.description && <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--color-ink)", opacity: 0.6 }}>{activeChallenge.description}</p>}
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 14, fontSize: 12, color: "var(--color-ink)", opacity: 0.55 }}>
+              <span>⏱ {activeChallenge.windowMinutes} min</span>
+              {activeChallenge.prize && <span>🏆 {activeChallenge.prize}</span>}
+            </div>
+            {myChallengeSub ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "rgba(13,148,136,0.1)", borderRadius: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-teal)" }}>✓ Submitted!</span>
+                <a href={myChallengeSub.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "var(--color-teal)", fontFamily: "var(--font-mono)", textDecoration: "none", opacity: 0.7 }}>
+                  {myChallengeSub.link.length > 50 ? myChallengeSub.link.slice(0, 50) + "…" : myChallengeSub.link}
+                </a>
+              </div>
+            ) : (
+              <form onSubmit={handleChallengeSubmit} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input
+                  className="form-input"
+                  style={{ flex: 1, minWidth: 220 }}
+                  placeholder="https://github.com/you/solution"
+                  value={challengeLink}
+                  onChange={(e) => { setChallengeLink(e.target.value); if (challengeLinkError) setChallengeLinkError(""); }}
+                  disabled={challengeSubmitting}
+                />
+                <button type="submit" className="btn-primary" disabled={challengeSubmitting || !challengeLink.trim()}>
+                  {challengeSubmitting ? "Submitting…" : "Submit"}
+                </button>
+              </form>
+            )}
+            {challengeLinkError && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#dc2626" }}>{challengeLinkError}</p>}
+            {challengeSubmitSuccess && <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--color-teal)", fontWeight: 600 }}>Submitted! Good luck 🎉</p>}
+          </div>
+        )}
+
+        {/* Email notification toggle */}
+        {currentUser && emailOptIn !== null && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, padding: "12px 16px", background: "var(--color-paper-2)", borderRadius: 12, border: "1px solid var(--color-border)", width: "fit-content" }}>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={emailOptIn}
+              disabled={togglingEmail}
+              onClick={handleEmailOptInToggle}
+              style={{
+                width: 36, height: 20, borderRadius: 10, border: "none", cursor: togglingEmail ? "wait" : "pointer",
+                background: emailOptIn ? "var(--color-teal)" : "var(--color-border)",
+                position: "relative", flexShrink: 0, transition: "background 0.2s",
+              }}
+            >
+              <span style={{
+                position: "absolute", top: 2, left: emailOptIn ? 18 : 2,
+                width: 16, height: 16, borderRadius: "50%", background: "#fff",
+                transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+              }} />
+            </button>
+            <span style={{ fontSize: 13, color: "var(--color-ink)", fontFamily: "var(--font-sans)" }}>Email notifications</span>
+          </div>
+        )}
 
         {/* Classrooms */}
         <div className="section-label">My classrooms</div>
@@ -343,7 +494,8 @@ export default function StudentDashboard() {
                 </button>
               </div>
             ) : sub?.link && (
-              <div className="submitted-link" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div className="flex flex-col gap-2">
+                <div className="submitted-link" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                   <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
@@ -376,6 +528,20 @@ export default function StudentDashboard() {
                       </svg>
                   }
                 </button>
+              </div>
+                {(sub.grade || sub.feedback) && (
+                  <div style={{ background: "var(--color-paper-2)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
+                    {sub.grade && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Grade</span>
+                        <span style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 13, color: "var(--color-teal)" }}>{sub.grade}</span>
+                      </div>
+                    )}
+                    {sub.feedback && (
+                      <p style={{ fontSize: 13, color: "var(--color-ink-2)", margin: 0, lineHeight: 1.5 }}>{sub.feedback}</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

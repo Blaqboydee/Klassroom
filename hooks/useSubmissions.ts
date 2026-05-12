@@ -17,6 +17,7 @@ interface UseSubmissionsReturn {
   submit: (data: { studentId: string; assignmentId: string; link: string }) => Promise<Submission | null>;
   updateSubmission: (id: string, link: string, studentId: string) => Promise<Submission | null>;
   deleteSubmission: (id: string, studentId: string) => Promise<boolean>;
+  gradeSubmission: (id: string, grade: string, feedback: string) => Promise<Submission | null>;
   submitting: boolean;
 }
 
@@ -112,5 +113,21 @@ export function useSubmissions(options: UseSubmissionsOptions = {}): UseSubmissi
     }
   }, []);
 
-  return { submissions, loading, error, refetch: fetchSubmissions, submit, updateSubmission, deleteSubmission, submitting };
+  const gradeSubmission = useCallback(async (id: string, grade: string, feedback: string): Promise<Submission | null> => {
+    try {
+      const res = await fetch(`/api/submissions/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ grade, feedback }),
+      });
+      if (!res.ok) return null;
+      const body = await res.json() as { submission: Submission };
+      setSubmissions((prev) => prev.map((s) => s.id === id ? body.submission : s));
+      return body.submission;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  return { submissions, loading, error, refetch: fetchSubmissions, submit, updateSubmission, deleteSubmission, gradeSubmission, submitting };
 }
