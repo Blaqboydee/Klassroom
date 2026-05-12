@@ -2,17 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { findAssignments, findAssignmentsByClassroomIds, createAssignment } from "../../../lib/db";
 
 // GET /api/assignments — list assignments, filtered by ?classroomId= (single or multiple)
+// Requires at least one classroomId — returns empty array otherwise to prevent data leaking.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const classroomIds = searchParams.getAll("classroomId");
 
+  if (classroomIds.length === 0) {
+    return NextResponse.json({ assignments: [] });
+  }
+
   let assignments;
-  if (classroomIds.length > 1) {
-    assignments = await findAssignmentsByClassroomIds(classroomIds);
-  } else if (classroomIds.length === 1) {
+  if (classroomIds.length === 1) {
     assignments = await findAssignments({ classroomId: classroomIds[0] });
   } else {
-    assignments = await findAssignments();
+    assignments = await findAssignmentsByClassroomIds(classroomIds);
   }
   return NextResponse.json({ assignments });
 }

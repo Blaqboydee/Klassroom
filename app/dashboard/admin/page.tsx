@@ -35,9 +35,11 @@ export default function AdminDashboard() {
   }, [classrooms, selectedClassroomId]);
 
   const { assignments, loading: assignmentsLoading, createAssignment, updateAssignment, deleteAssignment, creating } = useAssignments(
-    selectedClassroomId ? { classroomId: selectedClassroomId } : undefined
+    selectedClassroomId ? { classroomId: selectedClassroomId } : { classroomIds: [] }
   );
-  const { submissions, refetch: refetchSubmissions } = useSubmissions();
+  const { submissions, refetch: refetchSubmissions } = useSubmissions(
+    { classroomIds: classrooms.map((c) => c.id) }
+  );
 
   // Poll submissions every 10 seconds so the grid updates without a manual refresh
   const refetchRef = useRef(refetchSubmissions);
@@ -102,6 +104,13 @@ export default function AdminDashboard() {
   const [navOpen, setNavOpen] = useState(false);
   const [showCreateClassroom, setShowCreateClassroom] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  function handleCopyCode(id: string, code: string) {
+    navigator.clipboard.writeText(code);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
 
   function handleSignOut() {
     try { localStorage.removeItem("klassroom_user"); } catch { /* ignore */ }
@@ -268,11 +277,14 @@ export default function AdminDashboard() {
   <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px", marginTop: "6px" }}>
     <span className="code-badge">{c.code}</span>
 
-    <button className="copy-btn" title="Copy join code" onClick={() => navigator.clipboard.writeText(c.code)}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-      </svg>
+    <button className="copy-btn" title="Copy join code" onClick={() => handleCopyCode(c.id, c.code)}>
+      {copiedId === c.id
+        ? <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.02em", color: "var(--color-teal)" }}>Copied!</span>
+        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+          </svg>
+      }
     </button>
 
     <button className="copy-btn" title="Rename classroom" onClick={() => openEditClassroom(c.id, c.name)}>

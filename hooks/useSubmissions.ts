@@ -6,6 +6,7 @@ import type { Submission } from "@/models/Submission";
 interface UseSubmissionsOptions {
   studentId?: string;
   assignmentId?: string;
+  classroomIds?: string[];
 }
 
 interface UseSubmissionsReturn {
@@ -25,15 +26,24 @@ export function useSubmissions(options: UseSubmissionsOptions = {}): UseSubmissi
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { studentId, assignmentId } = options;
+  const { studentId, assignmentId, classroomIds } = options;
+  // Stable key so useCallback only re-runs when the list actually changes
+  const classroomIdsKey = classroomIds?.join(",") ?? "";
 
   const fetchSubmissions = useCallback(async () => {
+    // If a classroomIds filter is provided but empty, there is nothing to fetch.
+    if (classroomIds !== undefined && classroomIds.length === 0) {
+      setSubmissions([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
       if (studentId) params.set("studentId", studentId);
       if (assignmentId) params.set("assignmentId", assignmentId);
+      if (classroomIds?.length) classroomIds.forEach((id) => params.append("classroomId", id));
       const res = await fetch(`/api/submissions?${params.toString()}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`Failed to load submissions (${res.status})`);
       const data = await res.json() as { submissions: Submission[] };
@@ -43,7 +53,8 @@ export function useSubmissions(options: UseSubmissionsOptions = {}): UseSubmissi
     } finally {
       setLoading(false);
     }
-  }, [studentId, assignmentId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId, assignmentId, classroomIdsKey]);
 
   useEffect(() => { fetchSubmissions(); }, [fetchSubmissions]);
 

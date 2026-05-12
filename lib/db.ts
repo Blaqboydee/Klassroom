@@ -213,11 +213,16 @@ export async function deleteAssignment(id: string): Promise<boolean> {
 
 // ─── Submissions ─────────────────────────────────────────────────────────────
 
-export async function findSubmissions(filter?: { studentId?: string; assignmentId?: string }): Promise<Submission[]> {
+export async function findSubmissions(filter?: { studentId?: string; assignmentId?: string; assignmentIds?: string[] }): Promise<Submission[]> {
   const db = await getDb();
-  const query: Record<string, string> = {};
+  const query: Record<string, unknown> = {};
   if (filter?.studentId) query.studentId = filter.studentId;
   if (filter?.assignmentId) query.assignmentId = filter.assignmentId;
+  if (filter?.assignmentIds !== undefined) {
+    // Empty array means "no matching assignments" — return nothing rather than scanning the whole collection.
+    if (filter.assignmentIds.length === 0) return [];
+    query.assignmentId = { $in: filter.assignmentIds };
+  }
   const docs = await db.collection("submissions").find(query).toArray();
   return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as Submission);
 }

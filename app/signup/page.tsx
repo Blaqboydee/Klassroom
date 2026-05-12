@@ -36,6 +36,8 @@ export default function SignupPage() {
   const [role, setRole] = useState<"student" | "admin">("student");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [state, setState] = useState<SignupState>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [navOpen, setNavOpen] = useState(false);
@@ -230,31 +232,59 @@ export default function SignupPage() {
                         <label htmlFor="password" className="block text-[13px] font-medium text-ink-2 mb-[6px]">
                           Password <span className="text-ink-3 font-normal">(min. 6 characters)</span>
                         </label>
-                        <input
-                          id="password"
-                          type="password"
-                          className="signup-input"
-                          placeholder="Create a secure password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          disabled={state === "loading" || state === "success"}
-                          autoComplete="new-password"
-                        />
+                        <div className="relative">
+                          <input
+                            id="password"
+                            type={showPassword ? "text" : "password"}
+                            className="signup-input pr-10"
+                            placeholder="Create a secure password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            disabled={state === "loading" || state === "success"}
+                            autoComplete="new-password"
+                          />
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={() => setShowPassword((v) => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink transition-colors"
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                          >
+                            {showPassword
+                              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            }
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label htmlFor="confirm-password" className="block text-[13px] font-medium text-ink-2 mb-[6px]">
                           Confirm password
                         </label>
-                        <input
-                          id="confirm-password"
-                          type="password"
-                          className={`signup-input${confirmPassword && password !== confirmPassword ? " error" : ""}`}
-                          placeholder="Repeat your password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          disabled={state === "loading" || state === "success"}
-                          autoComplete="new-password"
-                        />
+                        <div className="relative">
+                          <input
+                            id="confirm-password"
+                            type={showConfirmPassword ? "text" : "password"}
+                            className={`signup-input pr-10${confirmPassword && password !== confirmPassword ? " error" : ""}`}
+                            placeholder="Repeat your password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            disabled={state === "loading" || state === "success"}
+                            autoComplete="new-password"
+                          />
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={() => setShowConfirmPassword((v) => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink transition-colors"
+                            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                          >
+                            {showConfirmPassword
+                              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            }
+                          </button>
+                        </div>
                         {confirmPassword && password !== confirmPassword && (
                           <p className="text-[12px] text-red mt-1">Passwords do not match</p>
                         )}
