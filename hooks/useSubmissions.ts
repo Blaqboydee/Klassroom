@@ -38,6 +38,13 @@ export function useSubmissions(options: UseSubmissionsOptions = {}): UseSubmissi
       setLoading(false);
       return;
     }
+    // If no filter is set at all, wait — fetching without any filter would return every
+    // submission in the database (a data-leak / wrong-data bug).
+    if (!studentId && !assignmentId && !classroomIds?.length) {
+      setSubmissions([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
