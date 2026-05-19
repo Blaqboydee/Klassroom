@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Classroom } from "@/models/Classroom";
+import type { User } from "@/models/User";
 
 interface UseClassroomsOptions {
   adminId?: string;
@@ -18,6 +19,8 @@ interface UseClassroomsReturn {
   leaveClassroom: (classroomId: string, userId: string) => Promise<boolean>;
   updateClassroom: (id: string, name: string) => Promise<boolean>;
   deleteClassroom: (id: string) => Promise<boolean>;
+  addMember: (classroomId: string, adminId: string, email: string) => Promise<{ student: User | null; error?: string }>;
+  removeMember: (classroomId: string, adminId: string, userId: string) => Promise<boolean>;
   creating: boolean;
   joining: boolean;
   leaving: boolean;
@@ -142,5 +145,41 @@ export function useClassrooms({ adminId, memberId }: UseClassroomsOptions = {}):
     return true;
   }, []);
 
-  return { classrooms, loading, error, refetch, createClassroom, joinClassroom, leaveClassroom, updateClassroom, deleteClassroom, creating, joining, leaving };
+  const addMember = useCallback(async (classroomId: string, adminId: string, email: string): Promise<{ student: User | null; error?: string }> => {
+    try {
+      const res = await fetch(`/api/classrooms/${encodeURIComponent(classroomId)}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminId, email }),
+      });
+      const json = await res.json() as { classroom?: Classroom; student?: User; error?: string };
+      if (!res.ok) return { student: null, error: json.error ?? "Failed to add student." };
+      if (json.classroom) {
+        setClassrooms((prev) => prev.map((c) => (c.id === classroomId ? json.classroom! : c)));
+      }
+      return { student: json.student ?? null };
+    } catch {
+      return { student: null, error: "Network error." };
+    }
+  }, []);
+
+  const removeMember = useCallback(async (classroomId: string, adminId: string, userId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/classrooms/${encodeURIComponent(classroomId)}/members`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminId, userId }),
+      });
+      if (!res.ok) return false;
+      const json = await res.json() as { classroom?: Classroom };
+      if (json.classroom) {
+        setClassrooms((prev) => prev.map((c) => (c.id === classroomId ? json.classroom! : c)));
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  return { classrooms, loading, error, refetch, createClassroom, joinClassroom, leaveClassroom, updateClassroom, deleteClassroom, addMember, removeMember, creating, joining, leaving };
 }

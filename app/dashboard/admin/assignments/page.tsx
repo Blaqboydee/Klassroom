@@ -39,6 +39,14 @@ export default function AdminAssignments() {
     { classroomIds: classrooms.map((c) => c.id) }
   );
 
+  // Roster management
+  const { addMember, removeMember } = useClassrooms({ adminId: currentUser?.id });
+  const [addEmail, setAddEmail] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addSuccess, setAddSuccess] = useState<string | null>(null);
+  const [addingMember, setAddingMember] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
   // Poll submissions every 10 seconds
   const refetchRef = useRef(refetchSubmissions);
   useEffect(() => { refetchRef.current = refetchSubmissions; }, [refetchSubmissions]);
@@ -137,6 +145,31 @@ export default function AdminAssignments() {
     await gradeSubmission(gradeModal.submissionId, gradeInput.trim(), feedbackInput.trim());
     setGradeSaving(false);
     setGradeModal(null);
+  }
+
+  async function handleAddMember(e: React.FormEvent) {
+    e.preventDefault();
+    if (!addEmail.trim() || !selectedClassroomId || !currentUser?.id) return;
+    setAddError(null);
+    setAddSuccess(null);
+    setAddingMember(true);
+    const result = await addMember(selectedClassroomId, currentUser.id, addEmail.trim());
+    setAddingMember(false);
+    if (result.error) {
+      setAddError(result.error);
+    } else {
+      setAddEmail("");
+      setAddSuccess(`${result.student?.name ?? "Student"} added to class.`);
+      setTimeout(() => setAddSuccess(null), 3000);
+    }
+  }
+
+  async function handleRemoveMember(userId: string, name: string) {
+    if (!selectedClassroomId || !currentUser?.id) return;
+    if (!confirm(`Remove ${name} from this classroom? They will lose access to its assignments but will remain in any other classrooms they belong to.`)) return;
+    setRemovingId(userId);
+    await removeMember(selectedClassroomId, currentUser.id, userId);
+    setRemovingId(null);
   }
 
   function exportCSV() {
@@ -416,6 +449,65 @@ export default function AdminAssignments() {
               </tbody>
             </table>
           )}
+        </div>
+
+        {/* Roster */}
+        <div className="section-label" style={{ marginTop: 8 }}>Roster — {selectedClassroom?.name ?? "select a classroom"}</div>
+        <div className="card">
+          <div className="card-body">
+            {/* Add student */}
+            <form onSubmit={handleAddMember} style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+              <input
+                type="email"
+                className="form-input"
+                style={{ flex: 1, minWidth: 220 }}
+                placeholder="Student email address"
+                value={addEmail}
+                onChange={(e) => { setAddEmail(e.target.value); setAddError(null); }}
+                disabled={addingMember || !selectedClassroomId}
+              />
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={addingMember || !addEmail.trim() || !selectedClassroomId}
+                style={{ whiteSpace: "nowrap" }}
+              >
+                {addingMember ? "Adding…" : "Add student"}
+              </button>
+            </form>
+            {addError && <p style={{ fontSize: 13, color: "#dc2626", marginTop: -10, marginBottom: 10 }}>{addError}</p>}
+            {addSuccess && <p style={{ fontSize: 13, color: "var(--color-teal)", fontWeight: 600, marginTop: -10, marginBottom: 10 }}>{addSuccess}</p>}
+
+            {/* Enrolled student list */}
+            {studentsLoading ? (
+              <div className="flex flex-col gap-2">
+                {[0,1,2].map((i) => <span key={i} className="skeleton h-9 w-full block rounded-lg" />)}
+              </div>
+            ) : enrolledStudents.length === 0 ? (
+              <p style={{ fontSize: 13, color: "var(--color-ink-3)" }}>
+                {selectedClassroomId ? "No students enrolled yet. Add one above or share the join code." : "Select a classroom to manage its roster."}
+              </p>
+            ) : (
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                {enrolledStudents.map((s) => (
+                  <li key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "8px 12px", background: "var(--color-paper-2)", border: "1px solid var(--color-border)", borderRadius: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-ink)" }}>{s.name}</div>
+                      <div style={{ fontSize: 12, color: "var(--color-ink-3)", fontFamily: "var(--font-mono)" }}>{s.email}</div>
+                    </div>
+                    <button
+                      title="Remove from this classroom"
+                      disabled={removingId === s.id}
+                      onClick={() => handleRemoveMember(s.id, s.name)}
+                      style={{ flexShrink: 0, padding: "5px 12px", fontSize: 12, fontWeight: 600, color: "#dc2626", background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 8, cursor: "pointer", opacity: removingId === s.id ? 0.5 : 1 }}
+                    >
+                      {removingId === s.id ? "Removing…" : "Remove"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </main>
 
