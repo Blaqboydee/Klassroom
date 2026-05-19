@@ -343,6 +343,57 @@
   .btn-amber       { background:var(--color-amber); color:white; padding:13px 28px; border-radius:8px; font-size:15px; font-weight:500; border:none; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:transform 0.15s,box-shadow 0.15s; }
   .btn-amber:hover { transform:translateY(-1px); box-shadow:0 8px 24px rgba(217,119,6,0.3); }
 
+  /* ── Desktop font-size scale-up ── */
+  @media (min-width:641px) {
+    /* Nav */
+    .nav-link           { font-size:15px; }
+    .nav-link-dash      { font-size:15px; }
+    .nav-link-dash.active { font-size:15px; }
+    .nav-signout        { font-size:15px; }
+    .live-btn           { font-size:15px; }
+    .brand              { font-size:21px; }
+    .brand-link         { font-size:22px; }
+    .help-link, .text-link { font-size:15px; }
+
+    /* Dashboard page headings & meta */
+    .greeting-sub       { font-size:16px; }
+    .stat-label         { font-size:14px; }
+    .section-label      { font-size:12.5px; }
+
+    /* Cards & assignments */
+    .classroom-name     { font-size:15px; }
+    .classroom-meta     { font-size:13px; }
+    .assign-title       { font-size:17px; }
+    .assign-desc        { font-size:15px; }
+    .assign-meta        { font-size:13px; }
+    .status-pill        { font-size:12.5px; }
+    .submitted-link     { font-size:13px; }
+
+    /* Table */
+    th                  { font-size:12px; }
+    td                  { font-size:15px; }
+    .student-email      { font-size:13px; }
+    .streak-badge       { font-size:14px; }
+
+    /* Forms & buttons */
+    .form-input, .form-textarea { font-size:15px; }
+    .create-btn         { font-size:15px; }
+    .success-msg        { font-size:14px; }
+    .submit-input       { font-size:15px; }
+    .submit-btn-dash    { font-size:15px; }
+    .join-input         { font-size:15px; }
+    .join-btn           { font-size:15px; }
+    .classroom-chip     { font-size:14px; }
+    .classroom-chip-code{ font-size:13px; }
+    .code-badge         { font-size:24px; }
+
+    /* Auth */
+    .login-input, .signup-input { font-size:16px; }
+    .submit-btn         { font-size:16px; }
+    .role-option-label  { font-size:15px; }
+    .role-option-desc   { font-size:12px; }
+  }
+
   /* ── Responsive ── */
   @media (max-width:900px) {
     .hero-visual   { display:none!important; }
