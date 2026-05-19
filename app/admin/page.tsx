@@ -107,7 +107,7 @@ export default function AdminPage() {
             <table className="w-full text-sm">
               <thead className="bg-zinc-50 dark:bg-zinc-900/50">
                 <tr>
-                  <th className="text-left px-5 py-3 font-medium text-zinc-500 dark:text-zinc-400">
+                  <th className="text-left px-5 py-3 font-sm text-zinc-500 dark:text-zinc-400">
                     Student
                   </th>
                   <th className="text-center px-3 py-3 font-medium text-zinc-500 dark:text-zinc-400">

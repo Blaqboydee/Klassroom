@@ -212,12 +212,19 @@ export default function StudentDashboard() {
   }
 
   const [leavingClassroomId, setLeavingClassroomId] = useState<string | null>(null);
+  const [leaveConfirmId, setLeaveConfirmId] = useState<string | null>(null);
 
   async function handleLeaveClassroom(classroomId: string) {
     if (!studentId) return;
-    if (!confirm("Leave this classroom? You will lose access to its assignments.")) return;
-    setLeavingClassroomId(classroomId);
-    await leaveClassroom(classroomId, studentId);
+    setLeaveConfirmId(classroomId);
+  }
+
+  async function confirmLeaveClassroom() {
+    if (!leaveConfirmId || !studentId) return;
+    const id = leaveConfirmId;
+    setLeaveConfirmId(null);
+    setLeavingClassroomId(id);
+    await leaveClassroom(id, studentId);
     setLeavingClassroomId(null);
   }
 
@@ -306,18 +313,18 @@ export default function StudentDashboard() {
           <div style={{ background: "rgba(13,148,136,0.07)", border: "1px solid rgba(13,148,136,0.3)", borderRadius: 14, padding: "18px 20px", marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--color-teal)", boxShadow: "0 0 0 3px rgba(13,148,136,0.25)" }} />
-              <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--color-teal)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Live Challenge</span>
+              <span style={{ fontSize: 14, fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--color-teal)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Live Challenge</span>
             </div>
             <p style={{ margin: "0 0 4px", fontFamily: "var(--font-serif)", fontSize: 18, fontWeight: 700, color: "var(--color-ink)" }}>{activeChallenge.title}</p>
-            {activeChallenge.description && <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--color-ink)", opacity: 0.6 }}>{activeChallenge.description}</p>}
-            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 14, fontSize: 12, color: "var(--color-ink)", opacity: 0.55 }}>
+            {activeChallenge.description && <p style={{ margin: "0 0 8px", fontSize: 14, color: "var(--color-ink)", opacity: 0.6 }}>{activeChallenge.description}</p>}
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 14, fontSize: 14, color: "var(--color-ink)", opacity: 0.55 }}>
               <span>⏱ {activeChallenge.windowMinutes} min</span>
               {activeChallenge.prize && <span>🏆 {activeChallenge.prize}</span>}
             </div>
             {myChallengeSub ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "rgba(13,148,136,0.1)", borderRadius: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-teal)" }}>✓ Submitted!</span>
-                <a href={myChallengeSub.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "var(--color-teal)", fontFamily: "var(--font-mono)", textDecoration: "none", opacity: 0.7 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-teal)" }}>✓ Submitted!</span>
+                <a href={myChallengeSub.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: "var(--color-teal)", fontFamily: "var(--font-mono)", textDecoration: "none", opacity: 0.7 }}>
                   {myChallengeSub.link.length > 50 ? myChallengeSub.link.slice(0, 50) + "…" : myChallengeSub.link}
                 </a>
               </div>
@@ -336,8 +343,8 @@ export default function StudentDashboard() {
                 </button>
               </form>
             )}
-            {challengeLinkError && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#dc2626" }}>{challengeLinkError}</p>}
-            {challengeSubmitSuccess && <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--color-teal)", fontWeight: 600 }}>Submitted! Good luck 🎉</p>}
+            {challengeLinkError && <p style={{ margin: "6px 0 0", fontSize: 14, color: "#dc2626" }}>{challengeLinkError}</p>}
+            {challengeSubmitSuccess && <p style={{ margin: "6px 0 0", fontSize: 14, color: "var(--color-teal)", fontWeight: 600 }}>Submitted! Good luck 🎉</p>}
           </div>
         )}
 
@@ -362,7 +369,7 @@ export default function StudentDashboard() {
                 transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
               }} />
             </button>
-            <span style={{ fontSize: 13, color: "var(--color-ink)", fontFamily: "var(--font-sans)" }}>Email notifications</span>
+            <span style={{ fontSize: 14, color: "var(--color-ink)", fontFamily: "var(--font-sans)" }}>Email notifications</span>
           </div>
         )}
 
@@ -487,7 +494,7 @@ export default function StudentDashboard() {
                 </button>
                 <button
                   className="copy-btn"
-                  style={{ padding: "6px 10px", fontSize: 12, color: "var(--color-ink-3)" }}
+                  style={{ padding: "6px 10px", fontSize: 14, color: "var(--color-ink-3)" }}
                   onClick={() => { setEditingSubId(null); setEditLinkValue(""); setEditLinkError(null); }}
                 >
                   Cancel
@@ -519,7 +526,7 @@ export default function StudentDashboard() {
                   onClick={() => handleDeleteSubmission(sub.id)}
                 >
                   {deletingSubId === sub.id
-                    ? <span style={{ fontSize: 10 }}>…</span>
+                    ? <span style={{ fontSize: 14 }}>…</span>
                     : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="3 6 5 6 21 6"/>
                         <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
@@ -533,12 +540,12 @@ export default function StudentDashboard() {
                   <div style={{ background: "var(--color-paper-2)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
                     {sub.grade && (
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Grade</span>
-                        <span style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 13, color: "var(--color-teal)" }}>{sub.grade}</span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Grade</span>
+                        <span style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 14, color: "var(--color-teal)" }}>{sub.grade}</span>
                       </div>
                     )}
                     {sub.feedback && (
-                      <p style={{ fontSize: 13, color: "var(--color-ink-2)", margin: 0, lineHeight: 1.5 }}>{sub.feedback}</p>
+                      <p style={{ fontSize: 14, color: "var(--color-ink-2)", margin: 0, lineHeight: 1.5 }}>{sub.feedback}</p>
                     )}
                   </div>
                 )}
@@ -576,6 +583,25 @@ export default function StudentDashboard() {
           );
         })}
       </main>
+
+      {/* Leave classroom confirmation modal */}
+      {leaveConfirmId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.35)]"
+          onClick={(e) => { if (e.target === e.currentTarget) setLeaveConfirmId(null); }}
+        >
+          <div className="bg-paper border border-border rounded-2xl shadow-xl w-full max-w-[380px] mx-4 p-6 flex flex-col gap-5">
+            <div>
+              <h2 className="font-serif text-[20px] text-ink leading-tight mb-1">Leave classroom?</h2>
+              <p className="text-[13px] text-ink-3">You will lose access to this classroom&apos;s assignments. You can rejoin later with the class code.</p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button className="px-4 py-2 rounded-lg border border-border text-ink-2 text-[14px] font-medium bg-paper-2 hover:bg-paper-3 transition-colors" onClick={() => setLeaveConfirmId(null)}>Cancel</button>
+              <button className="btn-primary" style={{ background: "#dc2626", borderColor: "#dc2626", padding: "8px 18px", fontSize: 14 }} onClick={confirmLeaveClassroom}>Leave</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sign-out confirmation modal */}
       {showSignOutModal && (

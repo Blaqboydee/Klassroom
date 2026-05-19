@@ -157,7 +157,7 @@ export default function StudentHistory() {
                 key={f}
                 onClick={() => setFilter(f)}
                 style={{
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: 600,
                   padding: "5px 12px",
                   borderRadius: 8,
@@ -214,10 +214,10 @@ export default function StudentHistory() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                           {sub.classroomName && (
-                            <span className="code-badge" style={{ fontSize: 10 }}>{sub.classroomName}</span>
+                            <span className="code-badge" style={{ fontSize: 14 }}>{sub.classroomName}</span>
                           )}
                           {sub.assignmentDueDate && (
-                            <span style={{ fontSize: 11, color: "var(--color-ink-3)", fontFamily: "var(--mono)" }}>
+                            <span style={{ fontSize: 14, color: "var(--color-ink-3)", fontFamily: "var(--mono)" }}>
                               Due {sub.assignmentDueDate}
                             </span>
                           )}
@@ -232,7 +232,7 @@ export default function StudentHistory() {
                     </div>
 
                     {/* Submitted at */}
-                    <div style={{ fontSize: 11, color: "var(--color-ink-3)", fontFamily: "var(--mono)", marginBottom: 8 }}>
+                    <div style={{ fontSize: 14, color: "var(--color-ink-3)", fontFamily: "var(--mono)", marginBottom: 8 }}>
                       Submitted {new Date(sub.submittedAt).toLocaleString()}
                     </div>
 
@@ -242,7 +242,7 @@ export default function StudentHistory() {
                         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                       </svg>
-                      <span style={{ flex: 1, fontSize: 12, color: "var(--color-ink-2)", fontFamily: "var(--mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ flex: 1, fontSize: 14, color: "var(--color-ink-2)", fontFamily: "var(--mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {sub.link}
                       </span>
                       <a
@@ -278,12 +278,12 @@ export default function StudentHistory() {
                       <div style={{ background: "var(--color-paper-2)", border: "1px solid var(--color-border)", borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
                         {sub.grade && (
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Grade</span>
-                            <span style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 13, color: "var(--color-teal)" }}>{sub.grade}</span>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--color-ink-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Grade</span>
+                            <span style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 14, color: "var(--color-teal)" }}>{sub.grade}</span>
                           </div>
                         )}
                         {sub.feedback && (
-                          <p style={{ fontSize: 13, color: "var(--color-ink-2)", margin: 0, lineHeight: 1.5 }}>{sub.feedback}</p>
+                          <p style={{ fontSize: 14, color: "var(--color-ink-2)", margin: 0, lineHeight: 1.5 }}>{sub.feedback}</p>
                         )}
                       </div>
                     )}

@@ -44,6 +44,7 @@ export default function AdminDashboard() {
   type ModalState =
     | { type: "deleteClassroom"; id: string; label: string }
     | { type: "editClassroom"; id: string; currentName: string }
+    | { type: "removeStudent"; userId: string; name: string }
     | null;
   const [modal, setModal] = useState<ModalState>(null);
   const [modalInput, setModalInput] = useState("");
@@ -120,7 +121,13 @@ export default function AdminDashboard() {
 
   async function handleRemoveMember(userId: string, name: string) {
     if (!rosterClassroomId || !currentUser?.id) return;
-    if (!confirm(`Remove ${name} from this classroom? They will lose access to its assignments but will remain in any other classrooms they belong to.`)) return;
+    setModal({ type: "removeStudent", userId, name });
+  }
+
+  async function confirmRemoveMember() {
+    if (modal?.type !== "removeStudent" || !rosterClassroomId || !currentUser?.id) return;
+    const { userId } = modal;
+    setModal(null);
     setRemovingId(userId);
     await removeMember(rosterClassroomId, currentUser.id, userId);
     setRemovingId(null);
@@ -206,7 +213,7 @@ export default function AdminDashboard() {
           <span>Your classrooms</span>
           <button
             className="create-btn"
-            style={{ fontSize: 12, padding: "4px 12px", marginBottom: 0 }}
+            style={{ fontSize: 14, padding: "4px 12px", marginBottom: 0 }}
             onClick={() => { setShowCreateClassroom((v) => !v); setClassroomName(""); }}
             disabled={!currentUser}
           >
@@ -263,13 +270,13 @@ export default function AdminDashboard() {
                   <span className="code-badge">{c.code}</span>
                   <button className="copy-btn" title="Copy join code" onClick={() => handleCopyCode(c.id, c.code)}>
                     {copiedId === c.id
-                      ? <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.02em", color: "var(--color-teal)" }}>Copied!</span>
+                      ? <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.02em", color: "var(--color-teal)" }}>Copied!</span>
                       : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                     }
                   </button>
                   <button className="copy-btn" title="Copy invite link" onClick={() => handleCopyLink(c.id, c.code)}>
                     {copiedLinkId === c.id
-                      ? <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.02em", color: "var(--color-teal)" }}>Link copied!</span>
+                      ? <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.02em", color: "var(--color-teal)" }}>Link copied!</span>
                       : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                     }
                   </button>
@@ -301,7 +308,7 @@ export default function AdminDashboard() {
               <span>Roster — {rosterClassroom.name}</span>
               <button
                 className="create-btn"
-                style={{ fontSize: 12, padding: "4px 12px", marginBottom: 0, background: "var(--color-paper-2)", color: "var(--color-ink-2)", borderColor: "var(--color-border)" }}
+                style={{ fontSize: 14, padding: "4px 12px", marginBottom: 0, background: "var(--color-paper-2)", color: "var(--color-ink-2)", borderColor: "var(--color-border)" }}
                 onClick={() => { setRosterClassroomId(null); setAddEmail(""); setAddError(null); setAddSuccess(null); }}
               >
                 Close
@@ -328,27 +335,27 @@ export default function AdminDashboard() {
                     {addingMember ? "Adding\u2026" : "Add student"}
                   </button>
                 </form>
-                {addError && <p style={{ fontSize: 13, color: "#dc2626", marginTop: -10, marginBottom: 10 }}>{addError}</p>}
-                {addSuccess && <p style={{ fontSize: 13, color: "var(--color-teal)", fontWeight: 600, marginTop: -10, marginBottom: 10 }}>{addSuccess}</p>}
+                {addError && <p style={{ fontSize: 14, color: "#dc2626", marginTop: -10, marginBottom: 10 }}>{addError}</p>}
+                {addSuccess && <p style={{ fontSize: 14, color: "var(--color-teal)", fontWeight: 600, marginTop: -10, marginBottom: 10 }}>{addSuccess}</p>}
                 {studentsLoading ? (
                   <div className="flex flex-col gap-2">
                     {[0,1,2].map((i) => <span key={i} className="skeleton h-9 w-full block rounded-lg" />)}
                   </div>
                 ) : rosterStudents.length === 0 ? (
-                  <p style={{ fontSize: 13, color: "var(--color-ink-3)" }}>No students enrolled yet. Add one above or share the join code.</p>
+                  <p style={{ fontSize: 14, color: "var(--color-ink-3)" }}>No students enrolled yet. Add one above or share the join code.</p>
                 ) : (
                   <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
                     {rosterStudents.map((s) => (
                       <li key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "8px 12px", background: "var(--color-paper-2)", border: "1px solid var(--color-border)", borderRadius: 10 }}>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-ink)" }}>{s.name}</div>
-                          <div style={{ fontSize: 12, color: "var(--color-ink-3)", fontFamily: "var(--font-mono)" }}>{s.email}</div>
+                          <div style={{ fontSize: 14, color: "var(--color-ink-3)", fontFamily: "var(--font-mono)" }}>{s.email}</div>
                         </div>
                         <button
                           title="Remove from this classroom"
                           disabled={removingId === s.id}
                           onClick={() => handleRemoveMember(s.id, s.name)}
-                          style={{ flexShrink: 0, padding: "5px 12px", fontSize: 12, fontWeight: 600, color: "#dc2626", background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 8, cursor: "pointer", opacity: removingId === s.id ? 0.5 : 1 }}
+                          style={{ flexShrink: 0, padding: "5px 12px", fontSize: 14, fontWeight: 600, color: "#dc2626", background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 8, cursor: "pointer", opacity: removingId === s.id ? 0.5 : 1 }}
                         >
                           {removingId === s.id ? "Removing\u2026" : "Remove"}
                         </button>
@@ -399,6 +406,18 @@ export default function AdminDashboard() {
                 <div className="flex gap-2 justify-end">
                   <button className="px-4 py-2 rounded-lg border border-border text-ink-2 text-[14px] font-medium bg-paper-2 hover:bg-paper-3 transition-colors" onClick={() => setModal(null)} disabled={modalWorking}>Cancel</button>
                   <button className="btn-primary" style={{ padding: "8px 18px", fontSize: 14 }} onClick={handleModalConfirm} disabled={modalWorking || !modalInput.trim()}>{modalWorking ? "Saving..." : "Save"}</button>
+                </div>
+              </>
+            )}
+            {modal.type === "removeStudent" && (
+              <>
+                <div>
+                  <h2 className="font-serif text-[20px] text-ink leading-tight mb-1">Remove student?</h2>
+                  <p className="text-[13px] text-ink-3"><span className="font-medium text-ink">{modal.name}</span> will lose access to this classroom&apos;s assignments. They will remain in any other classrooms they belong to.</p>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button className="px-4 py-2 rounded-lg border border-border text-ink-2 text-[14px] font-medium bg-paper-2 hover:bg-paper-3 transition-colors" onClick={() => setModal(null)}>Cancel</button>
+                  <button className="btn-primary" style={{ background: "#dc2626", borderColor: "#dc2626", padding: "8px 18px", fontSize: 14 }} onClick={confirmRemoveMember}>Remove</button>
                 </div>
               </>
             )}

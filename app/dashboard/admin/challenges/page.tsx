@@ -206,17 +206,17 @@ export default function AdminChallenges() {
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--color-teal)", boxShadow: "0 0 0 3px rgba(13,148,136,0.25)", animation: "pulse 2s infinite" }} />
-                <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--color-teal)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Active</span>
+                <span style={{ fontSize: 14, fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--color-teal)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Active</span>
               </div>
               <p style={{ margin: 0, fontFamily: "var(--font-serif)", fontSize: 18, fontWeight: 700, color: "var(--color-ink)" }}>{activeChallenge.title}</p>
-              <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--color-ink)", opacity: 0.6 }}>
+              <p style={{ margin: "4px 0 0", fontSize: 14, color: "var(--color-ink)", opacity: 0.6 }}>
                 {activeChallenge.windowMinutes} min window
                 {activeChallenge.prize ? ` · 🏆 ${activeChallenge.prize}` : ""}
               </p>
             </div>
             <button
               className="btn-primary"
-              style={{ background: "#dc2626", fontSize: 13 }}
+              style={{ background: "#dc2626", fontSize: 14 }}
               onClick={() => handleClose(activeChallenge.id)}
             >
               Close challenge
@@ -231,24 +231,24 @@ export default function AdminChallenges() {
             <form onSubmit={handlePost}>
               <div className="form-grid">
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--color-ink)", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Title *</label>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 6, color: "var(--color-ink)", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Title *</label>
                   <input className="form-input" placeholder="e.g. Build a counter in 15 minutes" value={title} onChange={(e) => setTitle(e.target.value)} required />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--color-ink)", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Time window (minutes) *</label>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 6, color: "var(--color-ink)", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Time window (minutes) *</label>
                   <input className="form-input" type="number" min={1} max={120} value={windowMinutes} onChange={(e) => setWindowMinutes(Number(e.target.value))} required />
                 </div>
               </div>
               <div style={{ marginTop: 12 }}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--color-ink)", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Description (optional)</label>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 6, color: "var(--color-ink)", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Description (optional)</label>
                 <textarea className="form-textarea" placeholder="Describe the challenge requirements…" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
               </div>
               <div style={{ marginTop: 12 }}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "var(--color-ink)", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Prize (optional)</label>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 6, color: "var(--color-ink)", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Prize (optional)</label>
                 <input className="form-input" placeholder="e.g. Extra credit, $10 gift card…" value={prize} onChange={(e) => setPrize(e.target.value)} />
               </div>
-              {postError && <p style={{ marginTop: 10, fontSize: 13, color: "#dc2626" }}>{postError}</p>}
-              {postSuccess && <p style={{ marginTop: 10, fontSize: 13, color: "var(--color-teal)", fontWeight: 600 }}>Challenge posted! Students have been notified.</p>}
+              {postError && <p style={{ marginTop: 10, fontSize: 14, color: "#dc2626" }}>{postError}</p>}
+              {postSuccess && <p style={{ marginTop: 10, fontSize: 14, color: "var(--color-teal)", fontWeight: 600 }}>Challenge posted! Students have been notified.</p>}
               <div className="form-actions">
                 <button type="submit" className="btn-primary" disabled={posting || !title.trim() || !selectedClassroomId}>
                   {posting ? "Posting…" : "⚡ Launch challenge"}
@@ -277,7 +277,7 @@ export default function AdminChallenges() {
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontFamily: "var(--font-serif)", fontSize: 16, fontWeight: 700, color: "var(--color-ink)" }}>{ch.title}</span>
                       <span style={{
-                        fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "var(--font-mono)",
+                        fontSize: 14, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "var(--font-mono)",
                         padding: "2px 8px", borderRadius: 99, border: "1px solid",
                         color: ch.status === "active" ? "var(--color-teal)" : "var(--color-ink)",
                         borderColor: ch.status === "active" ? "var(--color-teal)" : "var(--color-border)",
@@ -286,14 +286,14 @@ export default function AdminChallenges() {
                         {ch.status}
                       </span>
                     </div>
-                    <div style={{ marginTop: 4, fontSize: 12, color: "var(--color-ink)", opacity: 0.5, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ marginTop: 4, fontSize: 14, color: "var(--color-ink)", opacity: 0.5, display: "flex", gap: 12, flexWrap: "wrap" }}>
                       <span>⏱ {ch.windowMinutes} min</span>
                       {ch.prize && <span>🏆 {ch.prize}</span>}
                       {ch.winnerId && <span style={{ color: "var(--color-teal)", opacity: 1, fontWeight: 600 }}>Winner: {ch.winnerName}</span>}
                     </div>
                   </div>
                   <button
-                    style={{ fontSize: 12, fontWeight: 600, color: "var(--color-teal)", background: "none", border: "none", cursor: "pointer", padding: "4px 0", fontFamily: "var(--font-sans)" }}
+                    style={{ fontSize: 14, fontWeight: 600, color: "var(--color-teal)", background: "none", border: "none", cursor: "pointer", padding: "4px 0", fontFamily: "var(--font-sans)" }}
                     onClick={() => {
                       const isOpen = expandedId === ch.id;
                       setExpandedId(isOpen ? null : ch.id);
@@ -310,26 +310,26 @@ export default function AdminChallenges() {
                     {!submissions[ch.id] ? (
                       <div className="skeleton" style={{ height: 40, borderRadius: 8 }} />
                     ) : submissions[ch.id].length === 0 ? (
-                      <p style={{ fontSize: 13, color: "var(--color-ink)", opacity: 0.5 }}>No submissions yet.</p>
+                      <p style={{ fontSize: 14, color: "var(--color-ink)", opacity: 0.5 }}>No submissions yet.</p>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {submissions[ch.id].map((sub, i) => (
                           <div key={sub.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 14px", background: "var(--color-paper-2)", borderRadius: 10, flexWrap: "wrap" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: i === 0 ? "var(--color-teal)" : "var(--color-ink)", opacity: i === 0 ? 1 : 0.4, minWidth: 20 }}>#{i + 1}</span>
+                              <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, color: i === 0 ? "var(--color-teal)" : "var(--color-ink)", opacity: i === 0 ? 1 : 0.4, minWidth: 20 }}>#{i + 1}</span>
                               <div>
-                                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--color-ink)" }}>{sub.studentName}</p>
-                                <a href={sub.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "var(--color-teal)", textDecoration: "none", fontFamily: "var(--font-mono)" }}>{sub.link.length > 50 ? sub.link.slice(0, 50) + "…" : sub.link}</a>
+                                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--color-ink)" }}>{sub.studentName}</p>
+                                <a href={sub.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: "var(--color-teal)", textDecoration: "none", fontFamily: "var(--font-mono)" }}>{sub.link.length > 50 ? sub.link.slice(0, 50) + "…" : sub.link}</a>
                               </div>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontSize: 11, color: "var(--color-ink)", opacity: 0.4 }}>
+                              <span style={{ fontSize: 14, color: "var(--color-ink)", opacity: 0.4 }}>
                                 {new Date(sub.submittedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                               </span>
                               {!ch.winnerId && (
                                 <button
                                   className="btn-primary"
-                                  style={{ fontSize: 11, padding: "4px 12px" }}
+                                  style={{ fontSize: 14, padding: "4px 12px" }}
                                   disabled={declaringWinner === ch.id}
                                   onClick={() => handleDeclareWinner(ch.id, sub)}
                                 >
@@ -337,7 +337,7 @@ export default function AdminChallenges() {
                                 </button>
                               )}
                               {ch.winnerId === sub.studentId && (
-                                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--color-teal)", fontFamily: "var(--font-mono)" }}>WINNER 🏆</span>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--color-teal)", fontFamily: "var(--font-mono)" }}>WINNER 🏆</span>
                               )}
                             </div>
                           </div>
@@ -361,8 +361,8 @@ export default function AdminChallenges() {
               <p className="text-[13px] text-ink-3">You&apos;ll need to sign in again to access your dashboard.</p>
             </div>
             <div className="flex gap-3 justify-end">
-              <button className="copy-btn" style={{ padding: "8px 18px", borderRadius: 10, fontSize: 13 }} onClick={() => setShowSignOutModal(false)}>Cancel</button>
-              <button className="btn-primary" style={{ fontSize: 13 }} onClick={handleSignOut}>Sign out</button>
+              <button className="copy-btn" style={{ padding: "8px 18px", borderRadius: 10, fontSize: 14 }} onClick={() => setShowSignOutModal(false)}>Cancel</button>
+              <button className="btn-primary" style={{ fontSize: 14 }} onClick={handleSignOut}>Sign out</button>
             </div>
           </div>
         </div>

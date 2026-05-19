@@ -335,7 +335,7 @@ export default function LiveBoardPage() {
             </div>
             <h2 className="font-serif text-[20px] text-ink mb-1">{challenge.title}</h2>
             {challenge.description && <p className="text-[13px] text-ink-3 mb-2">{challenge.description}</p>}
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16, fontSize: 13 }}>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16, fontSize: 14 }}>
               <span className="text-ink-3">⏱ {challenge.windowMinutes} min window</span>
               {challenge.prize && <span className="text-ink-3">🏆 {challenge.prize}</span>}
               <span className="text-ink-3">{challengeSubs.length} submission{challengeSubs.length !== 1 ? "s" : ""}</span>

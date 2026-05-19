@@ -286,7 +286,7 @@ export default function AdminAssignments() {
           <button
             className="copy-btn"
             title="Export CSV"
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, padding: "4px 10px", border: "1px solid var(--color-border)", borderRadius: 8, background: "var(--color-paper-2)", color: "var(--color-ink-2)", cursor: "pointer", opacity: enrolledStudents.length === 0 || assignments.length === 0 ? 0.4 : 1 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, fontWeight: 600, padding: "4px 10px", border: "1px solid var(--color-border)", borderRadius: 8, background: "var(--color-paper-2)", color: "var(--color-ink-2)", cursor: "pointer", opacity: enrolledStudents.length === 0 || assignments.length === 0 ? 0.4 : 1 }}
             disabled={enrolledStudents.length === 0 || assignments.length === 0}
             onClick={exportCSV}
           >
@@ -314,12 +314,12 @@ export default function AdminAssignments() {
             <table>
               <thead>
                 <tr>
-                  <th>Student</th>
+                  <th className="">Student</th>
                   <th className="center">Streak</th>
                   <th className="center">Last active</th>
                   {assignments.map((a) => (
-                    <th key={a.id} className="center">
-                      <span className="block overflow-hidden text-ellipsis whitespace-nowrap">{a.title}</span>
+                    <th key={a.id} className="center" style={{ maxWidth: "130px" }}>
+                      <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={a.title}>{a.title}</span>
                       <div className="flex items-center justify-center gap-1 mt-0.5">
                         <button
                           title="Edit assignment"
@@ -366,7 +366,7 @@ export default function AdminAssignments() {
                         {s.streak}
                       </span>
                     </td>
-                    <td className="center" style={{ fontFamily: "var(--mono)", fontSize: 11 }}>{s.lastSubmissionDate ?? "–"}</td>
+                    <td className="center" style={{ fontFamily: "var(--mono)", fontSize: 14 }}>{s.lastSubmissionDate ?? "–"}</td>
                     {assignments.map((a) => {
                       const submission = submissionMap.get(`${s.id}:${a.id}`);
                       const link = submission?.link;
@@ -402,7 +402,7 @@ export default function AdminAssignments() {
                                 </button>
                               </div>
                               {submission.grade && (
-                                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-teal)", fontFamily: "var(--mono)", letterSpacing: "0.04em" }}>{submission.grade}</span>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--color-teal)", fontFamily: "var(--mono)", letterSpacing: "0.04em" }}>{submission.grade}</span>
                               )}
                             </div>
                           ) : (

@@ -166,8 +166,8 @@ export default function AdminAnnouncements() {
                   <div className="card-body" style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-                        {classroom && <span className="code-badge" style={{ fontSize: 10 }}>{classroom.name}</span>}
-                        <span style={{ fontSize: 11, color: "var(--color-ink-3)", fontFamily: "var(--mono)" }}>
+                        {classroom && <span className="code-badge" style={{ fontSize: 14 }}>{classroom.name}</span>}
+                        <span style={{ fontSize: 14, color: "var(--color-ink-3)", fontFamily: "var(--mono)" }}>
                           {new Date(a.createdAt).toLocaleString()}
                         </span>
                       </div>

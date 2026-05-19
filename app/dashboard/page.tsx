@@ -128,7 +128,7 @@ function SubmitModal({
       >
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "1.5rem" }}>
           <div>
-            <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--ink-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Submit assignment</div>
+            <div style={{ fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Submit assignment</div>
             <h2 style={{ fontFamily: "var(--serif)", fontSize: 22, color: "var(--ink)", lineHeight: 1.2, letterSpacing: -0.3 }}>{assignment.title}</h2>
           </div>
           <button
@@ -142,14 +142,14 @@ function SubmitModal({
         </div>
 
         <div style={{ padding: "12px 14px", background: "var(--paper-2)", borderRadius: 10, border: "1px solid var(--border)", marginBottom: "1.5rem" }}>
-          <p style={{ fontSize: 13, color: "var(--ink-2)", fontWeight: 300, lineHeight: 1.55 }}>{assignment.description}</p>
-          <div style={{ marginTop: 8, fontSize: 12, fontFamily: "var(--mono)", color: "var(--ink-3)" }}>
+          <p style={{ fontSize: 14, color: "var(--ink-2)", fontWeight: 300, lineHeight: 1.55 }}>{assignment.description}</p>
+          <div style={{ marginTop: 8, fontSize: 14, fontFamily: "var(--mono)", color: "var(--ink-3)" }}>
             Due: {new Date(assignment.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
           </div>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--ink-2)", marginBottom: 6 }}>
+          <label style={{ display: "block", fontSize: 14, fontWeight: 500, color: "var(--ink-2)", marginBottom: 6 }}>
             Submission link
           </label>
           <input
@@ -161,7 +161,7 @@ function SubmitModal({
             disabled={submitting || done}
             autoFocus
           />
-          <p style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 6, fontWeight: 300 }}>
+          <p style={{ fontSize: 14, color: "var(--ink-3)", marginTop: 6, fontWeight: 300 }}>
             Paste your GitHub repo, live URL, or any accessible link.
           </p>
 
@@ -248,18 +248,18 @@ function AssignmentCard({
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div>
             <h3 style={{ fontSize: 15, fontWeight: 500, color: "var(--ink)", marginBottom: 3 }}>{assignment.title}</h3>
-            <p style={{ fontSize: 13, color: "var(--ink-3)", fontWeight: 300, lineHeight: 1.5, maxWidth: 400 }}>
+            <p style={{ fontSize: 14, color: "var(--ink-3)", fontWeight: 300, lineHeight: 1.5, maxWidth: 400 }}>
               {assignment.description.length > 80 ? assignment.description.slice(0, 80) + "…" : assignment.description}
             </p>
           </div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 100, background: cfg.bg, color: cfg.color, fontSize: 12, fontFamily: "var(--mono)", fontWeight: 500, flexShrink: 0 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 100, background: cfg.bg, color: cfg.color, fontSize: 14, fontFamily: "var(--mono)", fontWeight: 500, flexShrink: 0 }}>
             {cfg.label}
           </div>
         </div>
 
         <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ fontSize: 12, color: isOverdue ? "#ef4444" : "var(--ink-3)", fontFamily: "var(--mono)", display: "flex", alignItems: "center", gap: 4 }}>
+            <div style={{ fontSize: 14, color: isOverdue ? "#ef4444" : "var(--ink-3)", fontFamily: "var(--mono)", display: "flex", alignItems: "center", gap: 4 }}>
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
                 <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" strokeWidth="1.2" />
                 <path d="M5.5 3v2.5l1.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -267,7 +267,7 @@ function AssignmentCard({
               Due {dueStr}
             </div>
             {assignment.submittedAt && (
-              <div style={{ fontSize: 12, color: "var(--ink-3)", fontFamily: "var(--mono)" }}>
+              <div style={{ fontSize: 14, color: "var(--ink-3)", fontFamily: "var(--mono)" }}>
                 ✓ {assignment.submittedAt}
               </div>
             )}
@@ -276,7 +276,7 @@ function AssignmentCard({
                 href={`https://${assignment.submissionLink}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontSize: 12, color: "var(--teal)", fontFamily: "var(--mono)", textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}
+                style={{ fontSize: 14, color: "var(--teal)", fontFamily: "var(--mono)", textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                   <path d="M1.5 8.5l7-7M8.5 8.5V1.5H1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -294,7 +294,7 @@ function AssignmentCard({
                 color: "var(--paper)",
                 border: "none", borderRadius: 8,
                 padding: "7px 14px",
-                fontSize: 13, fontFamily: "var(--sans)", fontWeight: 500,
+                fontSize: 14, fontFamily: "var(--sans)", fontWeight: 500,
                 cursor: "pointer",
                 display: "flex", alignItems: "center", gap: 6,
                 transition: "opacity 0.15s, transform 0.15s",
@@ -433,19 +433,19 @@ export default function StudentDashboard() {
             Klass<span style={{ color: "var(--amber)" }}>room</span>
           </a>
           <div style={{ width: 1, height: 20, background: "var(--border)" }} />
-          <span style={{ fontSize: 13, color: "var(--ink-3)", fontFamily: "var(--mono)" }}>{student.className}</span>
+          <span style={{ fontSize: 14, color: "var(--ink-3)", fontFamily: "var(--mono)" }}>{student.className}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
-          <div style={{ fontSize: 13, fontFamily: "var(--mono)", color: "var(--amber)", display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{ fontSize: 14, fontFamily: "var(--mono)", color: "var(--amber)", display: "flex", alignItems: "center", gap: 5 }}>
             🔥 <strong>{streak}</strong> streak
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--amber-light)", color: "#92400e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500, fontFamily: "var(--mono)" }}>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--amber-light)", color: "#92400e", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 500, fontFamily: "var(--mono)" }}>
               {student.name.split(" ").map((n) => n[0]).join("")}
             </div>
             <span style={{ fontSize: 14, color: "var(--ink-2)" }}>{student.name.split(" ")[0]}</span>
           </div>
-          <a href="/login" style={{ fontSize: 13, color: "var(--ink-3)", textDecoration: "none", border: "1px solid var(--border)", padding: "5px 12px", borderRadius: 8, transition: "background 0.15s" }}>
+          <a href="/login" style={{ fontSize: 14, color: "var(--ink-3)", textDecoration: "none", border: "1px solid var(--border)", padding: "5px 12px", borderRadius: 8, transition: "background 0.15s" }}>
             Sign out
           </a>
         </div>
@@ -475,7 +475,7 @@ export default function StudentDashboard() {
           }} />
 
           <div style={{ position: "relative", zIndex: 1 }}>
-            <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: "rgba(250,248,244,0.4)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.75rem" }}>
+            <div style={{ fontSize: 14, fontFamily: "var(--mono)", color: "rgba(250,248,244,0.4)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.75rem" }}>
               Current streak
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: "1rem" }}>
@@ -484,29 +484,29 @@ export default function StudentDashboard() {
               </div>
               <div style={{ paddingBottom: 10 }}>
                 <div style={{ fontSize: 22 }}>{streakMilestone}</div>
-                <div style={{ fontSize: 13, color: "rgba(250,248,244,0.5)", fontWeight: 300 }}>days in a row</div>
+                <div style={{ fontSize: 14, color: "rgba(250,248,244,0.5)", fontWeight: 300 }}>days in a row</div>
               </div>
             </div>
 
             {/* Streak bar */}
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 11, fontFamily: "var(--mono)", color: "rgba(250,248,244,0.35)" }}>Progress to 14-day milestone</span>
-                <span style={{ fontSize: 11, fontFamily: "var(--mono)", color: "rgba(250,248,244,0.5)" }}>{streak}/14</span>
+                <span style={{ fontSize: 14, fontFamily: "var(--mono)", color: "rgba(250,248,244,0.35)" }}>Progress to 14-day milestone</span>
+                <span style={{ fontSize: 14, fontFamily: "var(--mono)", color: "rgba(250,248,244,0.5)" }}>{streak}/14</span>
               </div>
               <div style={{ height: 5, background: "rgba(250,248,244,0.1)", borderRadius: 3, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${streakPercent}%`, background: "var(--amber)", borderRadius: 3, transition: "width 0.6s ease" }} />
               </div>
             </div>
 
-            <div style={{ marginTop: "1rem", fontSize: 13, color: "rgba(250,248,244,0.4)", fontWeight: 300 }}>
+            <div style={{ marginTop: "1rem", fontSize: 14, color: "rgba(250,248,244,0.4)", fontWeight: 300 }}>
               Last submission: <span style={{ color: "rgba(250,248,244,0.65)" }}>{student.lastSubmission}</span>
             </div>
           </div>
 
           {/* Right side — week dots */}
           <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
-            <div style={{ fontSize: 11, fontFamily: "var(--mono)", color: "rgba(250,248,244,0.35)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <div style={{ fontSize: 14, fontFamily: "var(--mono)", color: "rgba(250,248,244,0.35)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
               This week
             </div>
             <div style={{ display: "flex", gap: 6 }}>
@@ -520,11 +520,11 @@ export default function StudentDashboard() {
                       background: filled ? "var(--amber)" : "rgba(250,248,244,0.08)",
                       border: isToday ? "2px solid var(--amber)" : "none",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11,
+                      fontSize: 14,
                     }}>
                       {filled && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5 3.5-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                     </div>
-                    <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "rgba(250,248,244,0.3)" }}>{day}</div>
+                    <div style={{ fontSize: 14, fontFamily: "var(--mono)", color: "rgba(250,248,244,0.3)" }}>{day}</div>
                   </div>
                 );
               })}
@@ -548,10 +548,10 @@ export default function StudentDashboard() {
                 padding: "1.25rem 1.5rem",
               }}
             >
-              <div style={{ fontSize: 12, color: "var(--ink-3)", fontFamily: "var(--mono)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.label}</div>
+              <div style={{ fontSize: 14, color: "var(--ink-3)", fontFamily: "var(--mono)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.label}</div>
               <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
                 <div style={{ fontFamily: "var(--serif)", fontSize: 36, color: "var(--ink)", lineHeight: 1 }}>{s.value}</div>
-                <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: s.color, background: s.bg, padding: "3px 8px", borderRadius: 100 }}>
+                <div style={{ fontSize: 14, fontFamily: "var(--mono)", color: s.color, background: s.bg, padding: "3px 8px", borderRadius: 100 }}>
                   of {s.total}
                 </div>
               </div>
@@ -576,7 +576,7 @@ export default function StudentDashboard() {
                     <span style={{
                       background: activeFilter === f ? "rgba(250,248,244,0.2)" : "var(--paper-2)",
                       color: activeFilter === f ? "var(--paper)" : "var(--ink-3)",
-                      borderRadius: 100, padding: "1px 6px", fontSize: 11, fontFamily: "var(--mono)",
+                      borderRadius: 100, padding: "1px 6px", fontSize: 14, fontFamily: "var(--mono)",
                     }}>
                       {counts[f as keyof typeof counts]}
                     </span>
@@ -607,7 +607,7 @@ export default function StudentDashboard() {
               <path d="M8 2L14.5 13H1.5L8 2z" stroke="#dc2626" strokeWidth="1.3" strokeLinejoin="round" />
               <path d="M8 6v3.5M8 11v.5" stroke="#dc2626" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
-            <p style={{ fontSize: 13, color: "#991b1b", fontWeight: 400 }}>
+            <p style={{ fontSize: 14, color: "#991b1b", fontWeight: 400 }}>
               You have <strong>{counts.missing}</strong> missing {counts.missing === 1 ? "assignment" : "assignments"} — submitting now will reset your streak risk.
             </p>
           </div>

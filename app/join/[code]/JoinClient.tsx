@@ -194,7 +194,7 @@ export default function JoinClient({ code }: Props) {
           </Link>
         </div>
 
-        <p style={{ marginTop: 20, fontSize: 12, color: "var(--color-ink)", opacity: 0.4 }}>
+        <p style={{ marginTop: 20, fontSize: 14, color: "var(--color-ink)", opacity: 0.4 }}>
           Join code: <span style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.08em" }}>{code}</span>
         </p>
       </div>

@@ -88,11 +88,11 @@ export default function StudentAnnouncements() {
                 <div key={a.id} className="card" style={{ padding: 0 }}>
                   <div className="card-body">
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-                      {classroom && <span className="code-badge" style={{ fontSize: 10 }}>{classroom.name}</span>}
-                      <span style={{ fontSize: 11, color: "var(--color-ink-3)", fontFamily: "var(--mono)" }}>
+                      {classroom && <span className="code-badge" style={{ fontSize: 14 }}>{classroom.name}</span>}
+                      <span style={{ fontSize: 14, color: "var(--color-ink-3)", fontFamily: "var(--mono)" }}>
                         {new Date(a.createdAt).toLocaleString()}
                       </span>
-                      <span style={{ fontSize: 11, color: "var(--color-ink-3)", marginLeft: "auto" }}>
+                      <span style={{ fontSize: 14, color: "var(--color-ink-3)", marginLeft: "auto" }}>
                         Posted by <strong style={{ color: "var(--color-ink-2)" }}>{a.authorName}</strong>
                       </span>
                     </div>
