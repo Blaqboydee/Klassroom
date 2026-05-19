@@ -23,7 +23,7 @@ export default function AdminDashboard() {
   }, []);
 
   const { students, loading: studentsLoading } = useStudents();
-  const { classrooms, loading: classroomsLoading, creating: creatingClassroom, createClassroom, updateClassroom, deleteClassroom } = useClassrooms({ adminId: currentUser?.id });
+  const { classrooms, loading: classroomsLoading, creating: creatingClassroom, createClassroom, updateClassroom, deleteClassroom, addMember, removeMember, refetch: refetchClassrooms } = useClassrooms({ adminId: currentUser?.id });
 
   const classroomIds = classrooms.map((c) => c.id);
   const { assignments, loading: assignmentsLoading } = useAssignments({ classroomIds });
@@ -48,6 +48,13 @@ export default function AdminDashboard() {
   const [modal, setModal] = useState<ModalState>(null);
   const [modalInput, setModalInput] = useState("");
   const [modalWorking, setModalWorking] = useState(false);
+
+  const [rosterClassroomId, setRosterClassroomId] = useState<string | null>(null);
+  const [addEmail, setAddEmail] = useState("");
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addSuccess, setAddSuccess] = useState<string | null>(null);
+  const [addingMember, setAddingMember] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   async function handleCreateClassroom(e: React.FormEvent) {
     e.preventDefault();
@@ -86,6 +93,38 @@ export default function AdminDashboard() {
     navigator.clipboard.writeText(`${window.location.origin}/join/${code}`);
     setCopiedLinkId(id);
     setTimeout(() => setCopiedLinkId(null), 2000);
+  }
+
+  const rosterClassroom = classrooms.find((c) => c.id === rosterClassroomId);
+  const rosterStudents = rosterClassroom
+    ? students.filter((s) => rosterClassroom.memberIds.includes(s.id))
+    : [];
+
+  async function handleAddMember(e: React.FormEvent) {
+    e.preventDefault();
+    if (!addEmail.trim() || !rosterClassroomId || !currentUser?.id) return;
+    setAddError(null);
+    setAddSuccess(null);
+    setAddingMember(true);
+    const result = await addMember(rosterClassroomId, currentUser.id, addEmail.trim());
+    setAddingMember(false);
+    if (result.error) {
+      setAddError(result.error);
+    } else {
+      setAddEmail("");
+      setAddSuccess(`${result.student?.name ?? "Student"} added to class.`);
+      refetchClassrooms();
+      setTimeout(() => setAddSuccess(null), 3000);
+    }
+  }
+
+  async function handleRemoveMember(userId: string, name: string) {
+    if (!rosterClassroomId || !currentUser?.id) return;
+    if (!confirm(`Remove ${name} from this classroom? They will lose access to its assignments but will remain in any other classrooms they belong to.`)) return;
+    setRemovingId(userId);
+    await removeMember(rosterClassroomId, currentUser.id, userId);
+    setRemovingId(null);
+    refetchClassrooms();
   }
 
   function handleSignOut() {
@@ -240,10 +279,85 @@ export default function AdminDashboard() {
                   <button className="copy-btn" title="Delete classroom" style={{ color: "#dc2626" }} onClick={() => setModal({ type: "deleteClassroom", id: c.id, label: c.name })}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                   </button>
+                  <button
+                    className="copy-btn"
+                    title="Manage roster"
+                    style={{ color: rosterClassroomId === c.id ? "var(--color-teal)" : undefined }}
+                    onClick={() => { setRosterClassroomId((id) => id === c.id ? null : c.id); setAddEmail(""); setAddError(null); setAddSuccess(null); }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  </button>
                 </div>
                 <div className="classroom-meta" style={{ marginTop: "8px" }}>{c.memberIds.length} student{c.memberIds.length !== 1 ? "s" : ""} enrolled</div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Roster panel — shown when a classroom card's roster button is clicked */}
+        {rosterClassroomId && rosterClassroom && (
+          <div style={{ marginTop: 24 }}>
+            <div className="section-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span>Roster — {rosterClassroom.name}</span>
+              <button
+                className="create-btn"
+                style={{ fontSize: 12, padding: "4px 12px", marginBottom: 0, background: "var(--color-paper-2)", color: "var(--color-ink-2)", borderColor: "var(--color-border)" }}
+                onClick={() => { setRosterClassroomId(null); setAddEmail(""); setAddError(null); setAddSuccess(null); }}
+              >
+                Close
+              </button>
+            </div>
+            <div className="card">
+              <div className="card-body">
+                <form onSubmit={handleAddMember} style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+                  <input
+                    type="email"
+                    className="form-input"
+                    style={{ flex: 1, minWidth: 220 }}
+                    placeholder="Student email address"
+                    value={addEmail}
+                    onChange={(e) => { setAddEmail(e.target.value); setAddError(null); }}
+                    disabled={addingMember}
+                  />
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={addingMember || !addEmail.trim()}
+                    style={{ whiteSpace: "nowrap" }}
+                  >
+                    {addingMember ? "Adding\u2026" : "Add student"}
+                  </button>
+                </form>
+                {addError && <p style={{ fontSize: 13, color: "#dc2626", marginTop: -10, marginBottom: 10 }}>{addError}</p>}
+                {addSuccess && <p style={{ fontSize: 13, color: "var(--color-teal)", fontWeight: 600, marginTop: -10, marginBottom: 10 }}>{addSuccess}</p>}
+                {studentsLoading ? (
+                  <div className="flex flex-col gap-2">
+                    {[0,1,2].map((i) => <span key={i} className="skeleton h-9 w-full block rounded-lg" />)}
+                  </div>
+                ) : rosterStudents.length === 0 ? (
+                  <p style={{ fontSize: 13, color: "var(--color-ink-3)" }}>No students enrolled yet. Add one above or share the join code.</p>
+                ) : (
+                  <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {rosterStudents.map((s) => (
+                      <li key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "8px 12px", background: "var(--color-paper-2)", border: "1px solid var(--color-border)", borderRadius: 10 }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--color-ink)" }}>{s.name}</div>
+                          <div style={{ fontSize: 12, color: "var(--color-ink-3)", fontFamily: "var(--font-mono)" }}>{s.email}</div>
+                        </div>
+                        <button
+                          title="Remove from this classroom"
+                          disabled={removingId === s.id}
+                          onClick={() => handleRemoveMember(s.id, s.name)}
+                          style={{ flexShrink: 0, padding: "5px 12px", fontSize: 12, fontWeight: 600, color: "#dc2626", background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 8, cursor: "pointer", opacity: removingId === s.id ? 0.5 : 1 }}
+                        >
+                          {removingId === s.id ? "Removing\u2026" : "Remove"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </main>
