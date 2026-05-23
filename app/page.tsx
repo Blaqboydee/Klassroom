@@ -16,17 +16,17 @@ export default function LandingPage() {
   const router = useRouter();
   const [show, setShow] = useState(false);
 
-  useEffect(() => {
-    const hasSeen = localStorage.getItem(SEEN_LANDING_KEY);
-    if (hasSeen) {
-      router.replace("/login");
-    } else {
-      localStorage.setItem(SEEN_LANDING_KEY, "true");
-      setShow(true);
-    }
-  }, [router]);
+  // useEffect(() => {
+  //   const hasSeen = localStorage.getItem(SEEN_LANDING_KEY);
+  //   if (hasSeen) {
+  //     router.replace("/login");
+  //   } else {
+  //     localStorage.setItem(SEEN_LANDING_KEY, "true");
+  //     setShow(true);
+  //   }
+  // }, [router]);
 
-  if (!show) return null;
+  // if (!show) return null;
 
   return (
     <>

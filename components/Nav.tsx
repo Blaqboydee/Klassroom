@@ -27,7 +27,7 @@ export default function Nav() {
 
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-[100] px-8 h-[60px] flex items-center justify-between border-b border-border backdrop-blur-[12px] transition-[background] duration-300 ${navScrolled ? "bg-[rgba(250,248,244,0.96)]" : "bg-[rgba(250,248,244,0.92)]"}`}>
+      <nav className={`fixed top-0 left-0 right-0 z-[100] px-8 h-[60px] flex items-center justify-between border-b border-border backdrop-blur-[12px] transition-[background] duration-300 bg-[var(--color-paper)]`}>
         <a href="/" className="font-serif text-[22px] text-ink tracking-[-0.5px]">
           Klass<span className="text-amber">room</span>
         </a>

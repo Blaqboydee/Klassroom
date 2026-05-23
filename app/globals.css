@@ -1,20 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink:        #0f0e0c;
-  --color-ink-2:      #3a3830;
-  --color-ink-3:      #7a7770;
-  --color-paper:      #faf8f4;
-  --color-paper-2:    #f0ede6;
-  --color-paper-3:    #e4e0d8;
-  --color-amber:      #d97706;
-  --color-amber-light:#fef3c7;
-  --color-teal:       #0d9488;
-  --color-teal-dark:  #0f766e;
-  --color-teal-light: #ccfbf1;
-  --color-red:        #dc2626;
+  --color-ink:        #111827;
+  --color-ink-2:      #334155;
+  --color-ink-3:      #64748b;
+  --color-paper:      #f8fafc;
+  --color-paper-2:    #e2e8f0;
+  --color-paper-3:    #cbd5e1;
+  --color-amber:      #7c3aed;
+  --color-amber-light:#ede9fe;
+  --color-teal:       #0ea5e9;
+  --color-teal-dark:  #0369a1;
+  --color-teal-light: #bae6fd;
+  --color-red:        #ef4444;
   --color-red-light:  #fee2e2;
-  --color-border:     #e4e0d8;
+  --color-border:     #cbd5e1;
 
   --font-serif: 'DM Serif Display', Georgia, serif;
   --font-sans:  'Outfit', system-ui, sans-serif;
@@ -108,7 +108,7 @@
   /* ── Dashboard nav ── */
   .dash-nav {
     position:sticky; top:0; z-index:50;
-    background:rgba(250,248,244,0.92); backdrop-filter:blur(12px);
+    background:var(--color-paper); backdrop-filter:blur(12px);
     border-bottom:1px solid var(--color-border);
     display:flex; align-items:center; justify-content:space-between;
     padding:0 2rem; height:56px;

@@ -51,6 +51,12 @@ const students = [
   },
 ];
 
+const challengeEntries = [
+  { initials: "AJ", name: "Adaeze J.", time: "2m 14s", avatarBg: "#fef3c7", avatarColor: "#92400e", rank: 1 },
+  { initials: "KO", name: "Kofi O.", time: "3m 01s", avatarBg: "#f0fdf4", avatarColor: "#166534", rank: 2 },
+  { initials: "TN", name: "Temi N.", time: "4m 47s", avatarBg: "#ede9fe", avatarColor: "#5b21b6", rank: 3 },
+];
+
 function StatusDot({ status }: { status: string }) {
   const colors: Record<string, string> = {
     done: "#22c55e",
@@ -91,16 +97,10 @@ function StreakBadge({ streak }: { streak: number }) {
 export default function Hero() {
   return (
     <section className="min-h-screen pt-[120px] pb-[80px] px-8 max-w-[1200px] mx-auto">
-      <div
-        className="hero-grid grid grid-cols-2 gap-16 items-center"
-      >
+      <div className="hero-grid grid grid-cols-2 gap-16 items-center">
+
         {/* LEFT */}
         <div>
-          <div className="inline-flex items-center gap-2 font-mono text-[12px] font-medium text-amber bg-amber-light px-[12px] py-[4px] rounded-full mb-6 tracking-[0.02em]">
-            <span className="eyebrow-dot" />
-            Live classroom engagement
-          </div>
-
           <h1 className="font-serif text-[clamp(42px,5vw,68px)] leading-[1.05] tracking-[-1px] text-ink mb-5">
             Make every
             <br />
@@ -110,10 +110,14 @@ export default function Hero() {
             </em>
           </h1>
 
+          {/* Updated: subheading now conveys full platform breadth */}
+          <p className="text-base font-light text-ink-2 leading-[1.65] mb-4 max-w-[460px]">
+            The full classroom loop — assignments, grading, announcements, live
+            challenges, and a real-time board — all in one place.
+          </p>
           <p className="text-base font-light text-ink-2 leading-[1.65] mb-10 max-w-[460px]">
-            A live class board that makes student progress visible in real
-            time. Streaks create accountability. Submissions take under 10
-            seconds.
+            Streaks create accountability. Submissions take under 10 seconds.
+            {/* No HDMI. No Google Meet. Just open a link and teach. */}
           </p>
 
           <div className="flex items-center gap-4 flex-wrap">
@@ -143,16 +147,17 @@ export default function Hero() {
             </a>
             <a href="https://github.com/Blaqboydee/Klassroom" className="btn-secondary" target="_blank" rel="noopener noreferrer">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v 3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
               </svg>
               Star on GitHub
             </a>
           </div>
 
+          {/* Updated: stats now show 3 different feature areas, not all submission-related */}
           <div className="flex gap-10 mt-12 pt-8 border-t border-border">
             {[
               { num: "10s", label: "to submit an assignment" },
-              { num: "Live", label: "board updates in class" },
+              { num: "Live", label: "challenges with leaderboards" },
               { num: "100%", label: "visibility for instructors" },
             ].map((s) => (
               <div key={s.label}>
@@ -165,7 +170,8 @@ export default function Hero() {
 
         {/* RIGHT — BOARD MOCKUP */}
         <div className="hero-visual relative">
-          {/* Float card top-right */}
+
+          {/* Float card top-right — streak (kept) */}
           <div className="float-card" style={{ right: -24, top: 24, animationDelay: "0.8s" }}>
             <div className="text-[11px] text-ink-3 mb-1">Class avg. streak</div>
             <div className="font-serif text-[26px] text-amber leading-none flex items-center gap-1">
@@ -232,15 +238,34 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* Float card bottom-left */}
-          <div className="float-card" style={{ left: -24, bottom: 40, animationDelay: "1s" }}>
-            <div className="text-[11px] text-ink-3 mb-1">New submission</div>
-            <div className="text-[14px] font-medium text-teal mt-0.5 flex items-center">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="inline align-middle mr-[3px]"><polyline points="20 6 9 17 4 12"/></svg>
-              Adaeze submitted
+          {/* Float card bottom-left — replaced with mini challenge leaderboard */}
+          <div className="float-card" style={{ left: -24, bottom: 40, animationDelay: "1s", minWidth: 200 }}>
+            <div className="text-[11px] text-ink-3 mb-2 flex items-center gap-1">
+              <span>⚡</span> Live challenge
             </div>
-            <div className="font-mono text-[11px] text-ink-3 mt-1">github.com/ada/react-hw4</div>
+            <div className="text-[12px] font-medium text-ink mb-1">Build a todo app</div>
+            <div className="flex flex-col gap-[5px]">
+              {challengeEntries.map((e) => (
+                <div key={e.initials} className="flex items-center gap-[6px]">
+                  <span
+                    className="font-mono text-[10px] font-medium w-3"
+                    style={{ color: e.rank === 1 ? "#c9a84c" : "#7a7870" }}
+                  >
+                    {e.rank}
+                  </span>
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium font-mono"
+                    style={{ background: e.avatarBg, color: e.avatarColor }}
+                  >
+                    {e.initials}
+                  </div>
+                  <span className="text-[12px] text-ink flex-1">{e.name}</span>
+                  <span className="font-mono text-[10px] text-ink-3">{e.time}</span>
+                </div>
+              ))}
+            </div>
           </div>
+
         </div>
       </div>
     </section>
