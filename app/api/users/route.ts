@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findUsers, createUser } from "../../../lib/db";
 
-// GET /api/users — list users, optionally filtered by ?role=student|admin
+// GET /api/users — list users, optionally filtered by ?role=student|admin.
+// Streaks are per-class and derived separately via /api/streaks (see lib/streak.ts);
+// the streak field on these user records is not authoritative.
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const role = searchParams.get("role") as "student" | "admin" | null;

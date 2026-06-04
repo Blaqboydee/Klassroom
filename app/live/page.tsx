@@ -24,6 +24,7 @@ function useLiveBoard(classroomId: string | null, memberIds: string[]) {
   const [allStudents, setAllStudents] = useState<User[]>([]);
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [streakMap, setStreakMap] = useState<Map<string, number>>(new Map());
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,14 +33,21 @@ function useLiveBoard(classroomId: string | null, memberIds: string[]) {
   const poll = useCallback(async () => {
     if (!classroomId) return;
     try {
-      const [usersRes, assignmentsRes] = await Promise.all([
+      const [usersRes, assignmentsRes, streaksRes] = await Promise.all([
         fetch("/api/users?role=student", { cache: "no-store" }),
         fetch(`/api/assignments?classroomId=${encodeURIComponent(classroomId)}`, { cache: "no-store" }),
+        fetch(`/api/streaks?classroomId=${encodeURIComponent(classroomId)}`, { cache: "no-store" }),
       ]);
       if (!usersRes.ok || !assignmentsRes.ok) throw new Error("Failed to load data");
 
       const { users } = await usersRes.json() as { users: User[] };
       const { assignments } = await assignmentsRes.json() as { assignments: Assignment[] };
+
+      // Per-class streaks for this classroom (non-critical — don't fail the board if missing)
+      if (streaksRes.ok) {
+        const { streaks } = await streaksRes.json() as { streaks: { studentId: string; streak: number }[] };
+        setStreakMap(new Map(streaks.map((s) => [s.studentId, s.streak])));
+      }
 
       const latest = assignments.sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -78,7 +86,7 @@ function useLiveBoard(classroomId: string | null, memberIds: string[]) {
   const rows: BoardRow[] = students.map((s) => ({
     id: s.id,
     name: s.name,
-    streak: s.streak,
+    streak: streakMap.get(s.id) ?? 0,
     submission: submissions.find((sub) => sub.studentId === s.id) ?? null,
   }));
 

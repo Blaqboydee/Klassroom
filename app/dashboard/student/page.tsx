@@ -9,6 +9,7 @@ import { useClassrooms } from "@/hooks/useClassrooms";
 import type { Challenge, ChallengeSubmission } from "@/models/Challenge";
 
 interface SessionUser { id: string; name: string; role: "student" | "admin"; }
+interface ClassStreak { classroomId: string; classroomName: string; streak: number; lastSubmissionDate: string | null; }
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -36,23 +37,30 @@ export default function StudentDashboard() {
   );
   const { submissions, loading: submissionsLoading, submit, updateSubmission, deleteSubmission } = useSubmissions({ studentId: studentId || undefined });
 
-  // Real streak fetched from the server (updated after each submission)
-  const [streak, setStreak] = useState(0);
+  // Per-class streaks, derived on read (refreshed after each submission)
+  const [streaks, setStreaks] = useState<ClassStreak[]>([]);
   const [streakLoading, setStreakLoading] = useState(false);
   const [emailOptIn, setEmailOptIn] = useState<boolean | null>(null);
   const [togglingEmail, setTogglingEmail] = useState(false);
 
-  const fetchStreak = async (id: string) => {
+  const fetchStreaks = async (id: string) => {
     setStreakLoading(true);
     try {
-      const res = await fetch(`/api/users/${encodeURIComponent(id)}`, { cache: "no-store" });
+      const res = await fetch(`/api/streaks?studentId=${encodeURIComponent(id)}`, { cache: "no-store" });
       if (res.ok) {
-        const data = await res.json() as { user: { streak: number; emailOptIn?: boolean } };
-        setStreak(data.user.streak);
-        setEmailOptIn(data.user.emailOptIn ?? false);
+        const data = await res.json() as { streaks: ClassStreak[] };
+        setStreaks(data.streaks);
       }
     } finally {
       setStreakLoading(false);
+    }
+  };
+
+  const fetchProfile = async (id: string) => {
+    const res = await fetch(`/api/users/${encodeURIComponent(id)}`, { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json() as { user: { emailOptIn?: boolean } };
+      setEmailOptIn(data.user.emailOptIn ?? false);
     }
   };
 
@@ -73,7 +81,7 @@ export default function StudentDashboard() {
   }
 
   useEffect(() => {
-    if (studentId) fetchStreak(studentId);
+    if (studentId) { fetchStreaks(studentId); fetchProfile(studentId); }
   }, [studentId]);
 
   const [linkValues, setLinkValues] = useState<Record<string, string>>({});
@@ -189,7 +197,7 @@ export default function StudentDashboard() {
     setSubmittingId(null);
     void dueDate; // isLate computed server-side
     // Refresh streak from server after submission
-    fetchStreak(studentId);
+    fetchStreaks(studentId);
   }
 
   async function handleEditSave(sub: { id: string }) {
@@ -201,14 +209,14 @@ export default function StudentDashboard() {
     setEditingSubId(null);
     setEditLinkValue("");
     setEditLinkError(null);
-    fetchStreak(studentId);
+    fetchStreaks(studentId);
   }
 
   async function handleDeleteSubmission(subId: string) {
     setDeletingSubId(subId);
     await deleteSubmission(subId, studentId);
     setDeletingSubId(null);
-    fetchStreak(studentId);
+    fetchStreaks(studentId);
   }
 
   const [leavingClassroomId, setLeavingClassroomId] = useState<string | null>(null);
@@ -258,6 +266,7 @@ export default function StudentDashboard() {
           <Link href="/dashboard/student" className={`nav-link-dash${pathname === "/dashboard/student" ? " active" : ""}`}>My assignments</Link>
           <Link href="/dashboard/student/announcements" className={`nav-link-dash${pathname === "/dashboard/student/announcements" ? " active" : ""}`}>Announcements</Link>
           <Link href="/dashboard/student/history" className={`nav-link-dash${pathname === "/dashboard/student/history" ? " active" : ""}`}>History</Link>
+          <Link href="/dashboard/student/support" className={`nav-link-dash${pathname === "/dashboard/student/support" ? " active" : ""}`}>Support</Link>
           <button className="nav-signout" onClick={() => setShowSignOutModal(true)}>Sign out</button>
         </div>
         <button className="nav-burger" aria-label={navOpen ? "Close menu" : "Open menu"} onClick={() => setNavOpen((o) => !o)}>
@@ -272,6 +281,7 @@ export default function StudentDashboard() {
           <Link href="/dashboard/student" className={`nav-link-dash${pathname === "/dashboard/student" ? " active" : ""}`} onClick={() => setNavOpen(false)}>My assignments</Link>
           <Link href="/dashboard/student/announcements" className={`nav-link-dash${pathname === "/dashboard/student/announcements" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Announcements</Link>
           <Link href="/dashboard/student/history" className={`nav-link-dash${pathname === "/dashboard/student/history" ? " active" : ""}`} onClick={() => setNavOpen(false)}>History</Link>
+          <Link href="/dashboard/student/support" className={`nav-link-dash${pathname === "/dashboard/student/support" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Support</Link>
           <button className="nav-signout" onClick={() => { setNavOpen(false); setShowSignOutModal(true); }}>Sign out</button>
         </div>
       )}
@@ -283,17 +293,30 @@ export default function StudentDashboard() {
           <p className="greeting-sub">Student Dashboard</p>
         </div>
 
+        {/* Per-class streaks — each enrolled class has its own independent streak */}
+        {classrooms.length > 0 && (
+          <div className="stats-row" style={{ marginBottom: 12 }}>
+            {classrooms.map((c) => {
+              const cs = streaks.find((s) => s.classroomId === c.id);
+              const value = cs?.streak ?? 0;
+              const active = value > 0;
+              return (
+                <div key={c.id} className={`stat-card${active ? " amber-card" : ""}`}>
+                  <div className={`stat-num flex items-center gap-2${active ? " amber" : ""}`}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "#92400e" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"/>
+                    </svg>
+                    {streakLoading && !cs ? <span className="skeleton w-6 h-7 inline-block" /> : value}
+                  </div>
+                  <div className="stat-label">{c.name}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Stats */}
         <div className="stats-row">
-          <div className="stat-card amber-card">
-            <div className="stat-num amber flex items-center gap-2">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"/>
-              </svg>
-              {submissionsLoading || streakLoading ? <span className="skeleton w-6 h-7 inline-block" /> : streak}
-            </div>
-            <div className="stat-label">day streak</div>
-          </div>
           <div className="stat-card">
             <div className="stat-num">{(submissionsLoading || assignmentsLoading) ? <span className="skeleton w-8 h-7 inline-block" /> : submittedCount}</div>
             <div className="stat-label">submitted</div>

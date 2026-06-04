@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useStudents } from "@/hooks/useStudents";
@@ -39,11 +39,27 @@ export default function AdminAssignments() {
     { classroomIds: classrooms.map((c) => c.id) }
   );
 
-  // Poll submissions every 10 seconds
+  // Per-class streaks for the selected classroom (derived on read)
+  const [streakMap, setStreakMap] = useState<Map<string, { streak: number; lastSubmissionDate: string | null }>>(new Map());
+  const fetchStreaks = useCallback(async () => {
+    if (!selectedClassroomId) { setStreakMap(new Map()); return; }
+    try {
+      const res = await fetch(`/api/streaks?classroomId=${encodeURIComponent(selectedClassroomId)}`, { cache: "no-store" });
+      if (res.ok) {
+        const { streaks } = await res.json() as { streaks: { studentId: string; streak: number; lastSubmissionDate: string | null }[] };
+        setStreakMap(new Map(streaks.map((s) => [s.studentId, { streak: s.streak, lastSubmissionDate: s.lastSubmissionDate }])));
+      }
+    } catch { /* ignore */ }
+  }, [selectedClassroomId]);
+  useEffect(() => { fetchStreaks(); }, [fetchStreaks]);
+
+  // Poll submissions + streaks every 10 seconds
   const refetchRef = useRef(refetchSubmissions);
+  const fetchStreaksRef = useRef(fetchStreaks);
   useEffect(() => { refetchRef.current = refetchSubmissions; }, [refetchSubmissions]);
+  useEffect(() => { fetchStreaksRef.current = fetchStreaks; }, [fetchStreaks]);
   useEffect(() => {
-    const interval = setInterval(() => refetchRef.current(), 10_000);
+    const interval = setInterval(() => { refetchRef.current(); fetchStreaksRef.current(); }, 10_000);
     return () => clearInterval(interval);
   }, []);
 
@@ -187,6 +203,7 @@ export default function AdminAssignments() {
           <Link href="/dashboard/admin/assignments" className={`nav-link-dash${pathname === "/dashboard/admin/assignments" ? " active" : ""}`}>Assignments</Link>
           <Link href="/dashboard/admin/announcements" className={`nav-link-dash${pathname === "/dashboard/admin/announcements" ? " active" : ""}`}>Announcements</Link>
           <Link href="/dashboard/admin/challenges" className={`nav-link-dash${pathname === "/dashboard/admin/challenges" ? " active" : ""}`}>Challenges</Link>
+          <Link href="/dashboard/admin/support" className={`nav-link-dash${pathname === "/dashboard/admin/support" ? " active" : ""}`}>Support</Link>
           <Link href="/live" className={`nav-link-dash${pathname === "/live" ? " active" : ""}`}>Live board</Link>
           <button className="nav-signout" onClick={() => setShowSignOutModal(true)}>Sign out</button>
         </div>
@@ -203,6 +220,7 @@ export default function AdminAssignments() {
           <Link href="/dashboard/admin/assignments" className={`nav-link-dash${pathname === "/dashboard/admin/assignments" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Assignments</Link>
           <Link href="/dashboard/admin/announcements" className={`nav-link-dash${pathname === "/dashboard/admin/announcements" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Announcements</Link>
           <Link href="/dashboard/admin/challenges" className={`nav-link-dash${pathname === "/dashboard/admin/challenges" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Challenges</Link>
+          <Link href="/dashboard/admin/support" className={`nav-link-dash${pathname === "/dashboard/admin/support" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Support</Link>
           <Link href="/live" className={`nav-link-dash${pathname === "/live" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Live board</Link>
           <button className="nav-signout" onClick={() => { setNavOpen(false); setShowSignOutModal(true); }}>Sign out</button>
         </div>
@@ -358,15 +376,15 @@ export default function AdminAssignments() {
                       <div className="student-email">{s.email}</div>
                     </td>
                     <td className="center">
-                      <span className={`streak-badge ${s.streak > 0 ? "streak-active" : "streak-dead"}`}>
-                        {s.streak > 0
+                      <span className={`streak-badge ${(streakMap.get(s.id)?.streak ?? 0) > 0 ? "streak-active" : "streak-dead"}`}>
+                        {(streakMap.get(s.id)?.streak ?? 0) > 0
                           ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"/></svg>
                           : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
                         }
-                        {s.streak}
+                        {streakMap.get(s.id)?.streak ?? 0}
                       </span>
                     </td>
-                    <td className="center" style={{ fontFamily: "var(--mono)", fontSize: 14 }}>{s.lastSubmissionDate ?? "–"}</td>
+                    <td className="center" style={{ fontFamily: "var(--mono)", fontSize: 14 }}>{streakMap.get(s.id)?.lastSubmissionDate ?? "–"}</td>
                     {assignments.map((a) => {
                       const submission = submissionMap.get(`${s.id}:${a.id}`);
                       const link = submission?.link;

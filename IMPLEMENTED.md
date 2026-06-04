@@ -126,7 +126,7 @@ Admins can post a timed challenge (title, description, time window in minutes, o
 | GET/POST | `/api/submissions` | List / create submissions |
 | GET/PATCH/DELETE | `/api/submissions/[id]` | Submission detail, grade, delete |
 | GET/POST | `/api/announcements` | List / create announcements |
-| GET/POST | `/api/streaks` | Get / update student streaks |
+| GET | `/api/streaks` | Read student streaks (derived on read; never stored) |
 | GET/POST | `/api/students` | Student-specific queries |
 | GET/POST | `/api/challenges` | List / create challenges |
 | GET/PATCH | `/api/challenges/[id]` | Challenge detail + submissions, close/set winner |

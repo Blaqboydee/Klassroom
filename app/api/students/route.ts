@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findStudents, createStudent } from "../../../lib/db";
 
-// GET /api/students — list all students (admin only)
+// GET /api/students — list all students (admin only). Per-class streaks are
+// derived separately via /api/streaks (see lib/streak.ts).
 export async function GET(_req: NextRequest) {
   // TODO: verify admin role from auth token
-  const students = await findStudents();
+  const students = await findStudents({ role: "student" });
   return NextResponse.json({ students });
 }
 

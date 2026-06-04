@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findSubmissions, createSubmission, findAssignmentById, updateStudent, findStudentById, findClassrooms, findAssignmentsByClassroomIds } from "../../../lib/db";
+import { findSubmissions, createSubmission, findAssignmentById, findAssignmentsByClassroomIds } from "../../../lib/db";
 
 // GET /api/submissions — list submissions (optionally filtered by ?studentId=, ?assignmentId=, or ?classroomId= (repeatable))
 export async function GET(req: NextRequest) {
@@ -50,48 +50,6 @@ export async function POST(req: NextRequest) {
 
   const submission = await createSubmission({ studentId, assignmentId, link, submittedAt, isLate });
 
-  // Recalculate streak: count consecutive most-recent assignments submitted
-  const student = await findStudentById(studentId);
-  if (student) {
-    // Get all classrooms this student is enrolled in
-    const enrolledClassrooms = await findClassrooms({ memberId: studentId });
-    const classroomIds = enrolledClassrooms.map((c) => c.id);
-
-    // Get all assignments across those classrooms, sorted by dueDate ascending
-    const allAssignments = await findAssignmentsByClassroomIds(classroomIds);
-
-    // Get all this student's submissions
-    const allSubmissions = await findSubmissions({ studentId });
-    const submittedSet = new Set(allSubmissions.map((s) => s.assignmentId));
-
-    // Only consider assignments that are past-due OR already submitted
-    // (early submissions count; unsubmitted future assignments don't penalise)
-    const now = new Date();
-    const pastAssignments = allAssignments.filter(
-      (a) => new Date(a.dueDate) <= now || submittedSet.has(a.id)
-    );
-
-    // Build a map of assignmentId → isLate for quick lookup
-    const lateSet = new Set(allSubmissions.filter((s) => s.isLate).map((s) => s.assignmentId));
-
-    // Walk backwards through past assignments:
-    // - on-time submission  → increment streak
-    // - late submission     → skip (preserves streak, doesn't extend it)
-    // - not submitted       → break
-    let streak = 0;
-    for (let i = pastAssignments.length - 1; i >= 0; i--) {
-      const aid = pastAssignments[i].id;
-      if (!submittedSet.has(aid)) {
-        break; // gap — streak ends
-      }
-      if (!lateSet.has(aid)) {
-        streak++; // on time — counts
-      }
-      // late — fills the gap but doesn't increment; keep walking back
-    }
-
-    await updateStudent(studentId, { streak, lastSubmissionDate: submittedAt.slice(0, 10) });
-  }
-
+  // No streak write: streaks are derived on read from submissions (see lib/streak.ts).
   return NextResponse.json({ submission }, { status: 201 });
 }

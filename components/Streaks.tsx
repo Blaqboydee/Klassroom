@@ -31,13 +31,13 @@ const streakStudents = [
 const streakFacts = [
   {
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"/></svg>,
-    title: "Submit consecutively → streak grows",
-    desc: "Every on-time submission adds to a student's streak count. The number is visible to the whole class.",
+    title: "Submit on time → streak grows",
+    desc: "Every assignment turned in by the deadline adds one to a student's streak. It updates the moment they submit, and the number is visible to the whole class.",
   },
   {
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>,
-    title: "Miss one → it resets to zero",
-    desc: "No partial credit. No grace period. Missing a submission resets the streak entirely. Students feel this.",
+    title: "Skip one → the chain breaks",
+    desc: "Miss an assignment entirely and the streak breaks — it counts back only as far as the last gap. A late submission is forgiven: it keeps the chain alive but doesn't add to the count.",
   },
   {
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="#0d9488"/></svg>,
@@ -92,7 +92,7 @@ export default function Streaks() {
             ))}
 
             <div className="py-2 text-center text-[12px] text-ink-3 font-mono">
-              Miss one assignment → streak resets to 0
+              Skip an assignment → the chain breaks
             </div>
           </div>
 

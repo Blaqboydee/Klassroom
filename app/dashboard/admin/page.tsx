@@ -7,6 +7,8 @@ import { useStudents } from "@/hooks/useStudents";
 import { useAssignments } from "@/hooks/useAssignments";
 import { useSubmissions } from "@/hooks/useSubmissions";
 import { useClassrooms } from "@/hooks/useClassrooms";
+import { computeStreak } from "@/lib/streak";
+import type { Submission } from "@/models/Submission";
 
 interface SessionUser { id: string; name: string; role: "student" | "admin"; }
 
@@ -31,7 +33,26 @@ export default function AdminDashboard() {
 
   const allMemberIds = new Set(classrooms.flatMap((c) => c.memberIds));
   const totalStudents = studentsLoading ? null : students.filter((s) => allMemberIds.has(s.id)).length;
-  const activeStudents = studentsLoading ? null : students.filter((s) => allMemberIds.has(s.id) && s.streak > 0).length;
+  // Count active per-class streaks across the admin's classrooms, derived with the
+  // same computeStreak used server-side (single source of truth). A student in two
+  // classes can contribute up to two active streaks.
+  const activeStreaks = (studentsLoading || assignmentsLoading || classroomsLoading) ? null : (() => {
+    const subsByStudent = new Map<string, Submission[]>();
+    for (const sub of submissions) {
+      const list = subsByStudent.get(sub.studentId) ?? [];
+      list.push(sub);
+      subsByStudent.set(sub.studentId, list);
+    }
+    let count = 0;
+    for (const c of classrooms) {
+      const classAssignments = assignments.filter((a) => a.classroomId === c.id);
+      if (classAssignments.length === 0) continue;
+      for (const memberId of c.memberIds) {
+        if (computeStreak(classAssignments, subsByStudent.get(memberId) ?? []).streak > 0) count++;
+      }
+    }
+    return count;
+  })();
 
   const [classroomName, setClassroomName] = useState("");
   const [classroomCreated, setClassroomCreated] = useState<string | null>(null);
@@ -148,6 +169,7 @@ export default function AdminDashboard() {
           <Link href="/dashboard/admin/assignments" className={`nav-link-dash${pathname === "/dashboard/admin/assignments" ? " active" : ""}`}>Assignments</Link>
           <Link href="/dashboard/admin/announcements" className={`nav-link-dash${pathname === "/dashboard/admin/announcements" ? " active" : ""}`}>Announcements</Link>
           <Link href="/dashboard/admin/challenges" className={`nav-link-dash${pathname === "/dashboard/admin/challenges" ? " active" : ""}`}>Challenges</Link>
+          <Link href="/dashboard/admin/support" className={`nav-link-dash${pathname === "/dashboard/admin/support" ? " active" : ""}`}>Support</Link>
           <Link href="/live" className={`nav-link-dash${pathname === "/live" ? " active" : ""}`}>Live board</Link>
           <button className="nav-signout" onClick={() => setShowSignOutModal(true)}>Sign out</button>
         </div>
@@ -164,6 +186,7 @@ export default function AdminDashboard() {
           <Link href="/dashboard/admin/assignments" className={`nav-link-dash${pathname === "/dashboard/admin/assignments" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Assignments</Link>
           <Link href="/dashboard/admin/announcements" className={`nav-link-dash${pathname === "/dashboard/admin/announcements" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Announcements</Link>
           <Link href="/dashboard/admin/challenges" className={`nav-link-dash${pathname === "/dashboard/admin/challenges" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Challenges</Link>
+          <Link href="/dashboard/admin/support" className={`nav-link-dash${pathname === "/dashboard/admin/support" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Support</Link>
           <Link href="/live" className={`nav-link-dash${pathname === "/live" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Live board</Link>
           <button className="nav-signout" onClick={() => { setNavOpen(false); setShowSignOutModal(true); }}>Sign out</button>
         </div>
@@ -193,7 +216,7 @@ export default function AdminDashboard() {
             <div className="stat-label">total submissions</div>
           </div>
           <div className="stat-card">
-            <div className="stat-num">{studentsLoading ? <span className="skeleton w-8 h-7 inline-block" /> : activeStudents ?? 0}</div>
+            <div className="stat-num">{activeStreaks === null ? <span className="skeleton w-8 h-7 inline-block" /> : activeStreaks}</div>
             <div className="stat-label">active streaks</div>
           </div>
         </div>

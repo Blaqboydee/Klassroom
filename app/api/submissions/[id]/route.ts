@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findSubmissionById, updateSubmission, deleteSubmission, findSubmissions, findClassrooms, findAssignmentsByClassroomIds, findStudentById, updateStudent, findAssignmentById, findClassroomById, findUserById } from "../../../../lib/db";
+import { findSubmissionById, updateSubmission, deleteSubmission, findAssignmentById, findClassroomById, findUserById } from "../../../../lib/db";
 import { sendGradedEmail } from "../../../../lib/email";
 
 // PATCH /api/submissions/[id]
@@ -64,25 +64,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   await deleteSubmission(id);
 
-  // Recalculate streak after deletion
-  const student = await findStudentById(studentId);
-  if (student) {
-    const enrolledClassrooms = await findClassrooms({ memberId: studentId });
-    const classroomIds = enrolledClassrooms.map((c) => c.id);
-    const allAssignments = await findAssignmentsByClassroomIds(classroomIds);
-    const allSubmissions = await findSubmissions({ studentId });
-    const submittedSet = new Set(allSubmissions.map((s) => s.assignmentId));
-    const now = new Date();
-    const pastAssignments = allAssignments.filter(
-      (a) => new Date(a.dueDate) <= now || submittedSet.has(a.id)
-    );
-    let streak = 0;
-    for (let i = pastAssignments.length - 1; i >= 0; i--) {
-      if (submittedSet.has(pastAssignments[i].id)) { streak++; } else { break; }
-    }
-    const lastSub = allSubmissions.sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))[0];
-    await updateStudent(studentId, { streak, lastSubmissionDate: lastSub?.submittedAt.slice(0, 10) ?? null });
-  }
-
+  // No streak write: streaks are derived on read from submissions (see lib/streak.ts).
   return NextResponse.json({ ok: true });
 }

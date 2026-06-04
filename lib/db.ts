@@ -9,6 +9,7 @@ import type { Assignment } from "@/models/Assignment";
 import type { Submission } from "@/models/Submission";
 import type { Announcement } from "@/models/Announcement";
 import type { Challenge, ChallengeSubmission } from "@/models/Challenge";
+import { computeStreak, type StreakResult } from "./streak";
 
 const uri = process.env.MONGODB_URI;
 if (!uri) throw new Error("Missing MONGODB_URI environment variable");
@@ -321,6 +322,72 @@ export async function deleteClassroomCascade(id: string): Promise<boolean> {
   const assignmentIds = await deleteAssignmentsByClassroomId(id);
   await deleteSubmissionsByAssignmentIds(assignmentIds);
   return true;
+}
+
+// ─── Streaks (derived per-class, never stored) ────────────────────────────────
+// A streak belongs to a (student, classroom) pair: it is computed from only that
+// classroom's assignments + that student's submissions, so a miss in one class
+// never touches another class's streak. See lib/streak.ts for the rules.
+
+export interface ClassroomStreak extends StreakResult {
+  classroomId: string;
+  classroomName: string;
+}
+export interface StudentStreak extends StreakResult {
+  studentId: string;
+  name: string;
+}
+
+// One student's streak in each class they're enrolled in (newest class first).
+export async function getStudentClassroomStreaks(
+  studentId: string,
+  now: Date = new Date(),
+): Promise<ClassroomStreak[]> {
+  const classrooms = await findClassrooms({ memberId: studentId });
+  if (classrooms.length === 0) return [];
+
+  const allAssignments = await findAssignmentsByClassroomIds(classrooms.map((c) => c.id));
+  const submissions = await findSubmissions({ studentId });
+
+  const assignmentsByClassroom = new Map<string, Assignment[]>();
+  for (const a of allAssignments) {
+    const list = assignmentsByClassroom.get(a.classroomId) ?? [];
+    list.push(a);
+    assignmentsByClassroom.set(a.classroomId, list);
+  }
+
+  return classrooms.map((c) => {
+    const classAssignments = assignmentsByClassroom.get(c.id) ?? [];
+    const ids = new Set(classAssignments.map((a) => a.id));
+    const classSubs = submissions.filter((s) => ids.has(s.assignmentId));
+    return { classroomId: c.id, classroomName: c.name, ...computeStreak(classAssignments, classSubs, now) };
+  });
+}
+
+// Every member's streak within a single classroom.
+export async function getClassroomStreaks(
+  classroomId: string,
+  now: Date = new Date(),
+): Promise<StudentStreak[]> {
+  const classroom = await findClassroomById(classroomId);
+  if (!classroom) return [];
+
+  const assignments = await findAssignmentsByClassroomIds([classroomId]);
+  const submissions = await findSubmissions({ assignmentIds: assignments.map((a) => a.id) });
+  const members = await findUsersByIds(classroom.memberIds);
+
+  const submissionsByStudent = new Map<string, Submission[]>();
+  for (const s of submissions) {
+    const list = submissionsByStudent.get(s.studentId) ?? [];
+    list.push(s);
+    submissionsByStudent.set(s.studentId, list);
+  }
+
+  return members.map((m) => ({
+    studentId: m.id,
+    name: m.name,
+    ...computeStreak(assignments, submissionsByStudent.get(m.id) ?? [], now),
+  }));
 }
 
 // ─── Backward-compat aliases ──────────────────────────────────────────────────
