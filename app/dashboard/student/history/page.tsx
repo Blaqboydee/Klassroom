@@ -92,6 +92,7 @@ export default function StudentHistory() {
           <Link href="/dashboard/student" className={`nav-link-dash${pathname === "/dashboard/student" ? " active" : ""}`}>My assignments</Link>
           <Link href="/dashboard/student/announcements" className={`nav-link-dash${pathname === "/dashboard/student/announcements" ? " active" : ""}`}>Announcements</Link>
           <Link href="/dashboard/student/history" className={`nav-link-dash${pathname === "/dashboard/student/history" ? " active" : ""}`}>History</Link>
+          <Link href="/dashboard/student/support" className={`nav-link-dash${pathname === "/dashboard/student/support" ? " active" : ""}`}>Support</Link>
           <button className="nav-signout" onClick={() => setShowSignOutModal(true)}>Sign out</button>
         </div>
         <button className="nav-burger" aria-label={navOpen ? "Close menu" : "Open menu"} onClick={() => setNavOpen((o) => !o)}>
@@ -106,6 +107,7 @@ export default function StudentHistory() {
           <Link href="/dashboard/student" className={`nav-link-dash${pathname === "/dashboard/student" ? " active" : ""}`} onClick={() => setNavOpen(false)}>My assignments</Link>
           <Link href="/dashboard/student/announcements" className={`nav-link-dash${pathname === "/dashboard/student/announcements" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Announcements</Link>
           <Link href="/dashboard/student/history" className={`nav-link-dash${pathname === "/dashboard/student/history" ? " active" : ""}`} onClick={() => setNavOpen(false)}>History</Link>
+          <Link href="/dashboard/student/support" className={`nav-link-dash${pathname === "/dashboard/student/support" ? " active" : ""}`} onClick={() => setNavOpen(false)}>Support</Link>
           <button className="nav-signout" onClick={() => { setNavOpen(false); setShowSignOutModal(true); }}>Sign out</button>
         </div>
       )}
