@@ -10,7 +10,7 @@ interface UseAnnouncementsOptions {
 interface UseAnnouncementsReturn {
   announcements: Announcement[];
   loading: boolean;
-  post: (data: { classroomId: string; authorId: string; authorName: string; message: string }) => Promise<Announcement | null>;
+  post: (data: { classroomIds: string[]; authorId: string; authorName: string; message: string }) => Promise<Announcement[] | null>;
   remove: (id: string) => Promise<boolean>;
   posting: boolean;
 }
@@ -47,7 +47,7 @@ export function useAnnouncements(options: UseAnnouncementsOptions = {}): UseAnno
 
   useEffect(() => { fetchAnnouncements(); }, [fetchAnnouncements]);
 
-  const post = useCallback(async (data: { classroomId: string; authorId: string; authorName: string; message: string }): Promise<Announcement | null> => {
+  const post = useCallback(async (data: { classroomIds: string[]; authorId: string; authorName: string; message: string }): Promise<Announcement[] | null> => {
     setPosting(true);
     try {
       const res = await fetch("/api/announcements", {
@@ -56,9 +56,9 @@ export function useAnnouncements(options: UseAnnouncementsOptions = {}): UseAnno
         body: JSON.stringify(data),
       });
       if (!res.ok) return null;
-      const body = await res.json() as { announcement: Announcement };
-      setAnnouncements((prev) => [body.announcement, ...prev]);
-      return body.announcement;
+      const body = await res.json() as { announcements: Announcement[] };
+      setAnnouncements((prev) => [...body.announcements, ...prev]);
+      return body.announcements;
     } catch {
       return null;
     } finally {

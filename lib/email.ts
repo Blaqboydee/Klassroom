@@ -105,34 +105,41 @@ export async function sendGradedEmail(
   }).catch(() => { /* non-fatal */ });
 }
 
-/** Notify enrolled students that a new announcement has been posted. */
+/** A student receiving an announcement email, labeled with the class(es) it covers. */
+export interface AnnouncementRecipient extends Pick<User, "email" | "name" | "emailOptIn"> {
+  classroomName: string; // e.g. "Javascript May Cohort" or "React April Cohort & Javascript May Cohort"
+}
+
+/** Notify students that a new announcement has been posted.
+ * Recipients must already be deduplicated across classrooms — each entry gets one email. */
 export async function sendAnnouncementEmails(
-  students: Pick<User, "email" | "name" | "emailOptIn">[],
-  classroom: Pick<Classroom, "name">,
+  recipients: AnnouncementRecipient[],
   authorName: string,
   message: string
 ) {
-  const opted = students.filter((s) => s.emailOptIn);
+  const opted = recipients.filter((r) => r.emailOptIn);
   if (opted.length === 0) return;
 
-  await Promise.allSettled(
-    opted.map((student) =>
-      resend.emails.send({
+  // Resend's batch endpoint takes up to 100 emails per request, which also keeps
+  // large broadcasts under the per-request rate limit.
+  for (let i = 0; i < opted.length; i += 100) {
+    await resend.batch.send(
+      opted.slice(i, i + 100).map((r) => ({
         from: FROM,
-        to: student.email,
-        subject: `Announcement from ${classroom.name}`,
+        to: r.email,
+        subject: `Announcement from ${r.classroomName}`,
         html: baseTemplate(`
           <h1 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#1a1916">New announcement</h1>
-          <p style="margin:0 0 20px;font-size:14px;color:#6b6963">${classroom.name} · from ${authorName}</p>
+          <p style="margin:0 0 20px;font-size:14px;color:#6b6963">${r.classroomName} · from ${authorName}</p>
           <p style="margin:0;font-size:15px;color:#1a1916;line-height:1.65;border-left:3px solid #00897b;padding-left:14px">${message}</p>
           <a href="https://klassroom.cv/dashboard/student/announcements"
              style="display:inline-block;margin-top:24px;padding:11px 22px;background:#00897b;color:#fff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:600">
             Read in Klassroom
           </a>
         `),
-      })
-    )
-  );
+      }))
+    ).catch(() => { /* non-fatal */ });
+  }
 }
 
 /** Alert enrolled students that a live challenge has just been posted. */

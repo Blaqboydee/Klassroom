@@ -25,29 +25,33 @@ export default function AdminAnnouncements() {
     { classroomIds: classrooms.map((c) => c.id) }
   );
 
-  const [selectedClassroomId, setSelectedClassroomId] = useState<string>("");
-  useEffect(() => {
-    if (classrooms.length > 0 && !selectedClassroomId) {
-      setSelectedClassroomId(classrooms[0].id);
-    }
-  }, [classrooms, selectedClassroomId]);
+  // null = untouched, so the first classroom stays preselected until the user changes it.
+  const [selectedClassroomIds, setSelectedClassroomIds] = useState<string[] | null>(null);
+  const selectedIds = selectedClassroomIds ?? (classrooms.length > 0 ? [classrooms[0].id] : []);
+  const allSelected = classrooms.length > 0 && selectedIds.length === classrooms.length;
+
+  function toggleClassroom(id: string) {
+    setSelectedClassroomIds(
+      selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]
+    );
+  }
 
   const [message, setMessage] = useState("");
-  const [posted, setPosted] = useState(false);
+  const [postedCount, setPostedCount] = useState(0);
 
   async function handlePost(e: React.FormEvent) {
     e.preventDefault();
-    if (!message.trim() || !selectedClassroomId || !currentUser) return;
+    if (!message.trim() || selectedIds.length === 0 || !currentUser) return;
     const result = await postAnnouncement({
-      classroomId: selectedClassroomId,
+      classroomIds: selectedIds,
       authorId: currentUser.id,
       authorName: currentUser.name,
       message: message.trim(),
     });
     if (result) {
       setMessage("");
-      setPosted(true);
-      setTimeout(() => setPosted(false), 2500);
+      setPostedCount(result.length);
+      setTimeout(() => setPostedCount(0), 2500);
     }
   }
 
@@ -112,11 +116,36 @@ export default function AdminAnnouncements() {
               <form onSubmit={handlePost}>
                 {classrooms.length > 1 && (
                   <div className="mb-[10px]">
-                    <select className="form-input" value={selectedClassroomId} onChange={(e) => setSelectedClassroomId(e.target.value)}>
-                      {classrooms.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-                      ))}
-                    </select>
+                    <div className="flex items-center justify-between mb-[6px]">
+                      <span className="text-[13px] text-ink-3">Post to</span>
+                      <button
+                        type="button"
+                        className="text-[13px] text-ink-3 underline"
+                        onClick={() => setSelectedClassroomIds(allSelected ? [] : classrooms.map((c) => c.id))}
+                      >
+                        {allSelected ? "Clear all" : "Select all"}
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {classrooms.map((c) => {
+                        const checked = selectedIds.includes(c.id);
+                        return (
+                          <button
+                            type="button"
+                            key={c.id}
+                            onClick={() => toggleClassroom(c.id)}
+                            aria-pressed={checked}
+                            className={`px-3 py-[6px] rounded-full border text-[13px] font-medium transition-colors ${
+                              checked
+                                ? "bg-ink text-paper border-ink"
+                                : "bg-paper-2 text-ink-2 border-border hover:bg-paper-3"
+                            }`}
+                          >
+                            {c.name} ({c.code})
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
                 <textarea
@@ -128,14 +157,14 @@ export default function AdminAnnouncements() {
                   disabled={posting || !currentUser}
                 />
                 <div className="form-actions">
-                  {posted && (
+                  {postedCount > 0 && (
                     <span className="success-msg">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                      Announcement posted
+                      Posted to {postedCount} {postedCount === 1 ? "class" : "classes"}
                     </span>
                   )}
-                  <button className="create-btn" type="submit" disabled={posting || !message.trim() || !currentUser}>
-                    {posting ? "Posting…" : "Post"}
+                  <button className="create-btn" type="submit" disabled={posting || !message.trim() || selectedIds.length === 0 || !currentUser}>
+                    {posting ? "Posting…" : selectedIds.length > 1 ? `Post to ${selectedIds.length} classes` : "Post"}
                   </button>
                 </div>
               </form>
