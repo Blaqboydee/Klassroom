@@ -1,10 +1,29 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const description =
+  "A playful learning platform where students earn streaks for completing assignments on time, fostering consistency and friendly competition.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? "https://klassroom.cv"),
-  title: "Klassroom",
-  description: "A playful learning platform where students earn streaks for completing assignments on time, fostering consistency and friendly competition.",
+  title: {
+    default: "Klassroom — Assignments, Streaks & Submissions",
+    template: "%s | Klassroom",
+  },
+  description,
+  applicationName: "Klassroom",
+  openGraph: {
+    type: "website",
+    siteName: "Klassroom",
+    url: "/",
+    title: "Klassroom — Assignments, Streaks & Submissions",
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Klassroom — Assignments, Streaks & Submissions",
+    description,
+  },
 };
 
 export default function RootLayout({
