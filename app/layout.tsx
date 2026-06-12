@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   },
   description,
   applicationName: "Klassroom",
+  verification: {
+    google: "SyGuMHHLhCtoTbdAleO_-w892unFy25bFElzvuuYqx4",
+  },
   openGraph: {
     type: "website",
     siteName: "Klassroom",
