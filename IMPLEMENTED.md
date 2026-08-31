@@ -48,6 +48,17 @@ Students see a chronological feed of all upcoming and past assignments across ev
 
 ---
 
+### 11. Attendance Register
+Instructors take a daily roll call from a dedicated Attendance page: pick the class and date, and the roster loads with everyone marked present so the instructor only flags the absentees. Saving a date that was already recorded corrects that session rather than creating a duplicate — the register holds at most one session per (classroom, date).
+
+The register grid shows every student against every class day held, with per-student attendance rate, present/absent totals, and a CSV export. Class-wide stats surface classes held, average attendance, and how many students have missed 2+ classes in a row. Students see a per-class attendance rate card on their dashboard.
+
+Attendance percentages are **derived on read** — like streaks, nothing is aggregated into a stored counter, so deleting or correcting a session immediately and correctly recalculates every rate.
+
+**Files:** `models/Attendance.ts`, `lib/attendance.ts` (pure `computeAttendanceSummary`), `lib/db.ts`, `app/api/attendance/route.ts`, `app/api/attendance/[id]/route.ts`, `app/api/attendance/summary/route.ts`, `hooks/useAttendance.ts`, `app/dashboard/admin/attendance/page.tsx`, `app/dashboard/student/page.tsx`
+
+---
+
 ### 12. Student Self-Enroll via Link
 Instructors can generate a shareable invite link (e.g. `/join/ABC123`) from the admin classroom panel. Clicking the link takes a student directly to the enroll flow; login and signup pages also handle the `?join=CODE` query param so the join happens automatically after authentication.
 
@@ -107,6 +118,7 @@ Admins can post a timed challenge (title, description, time window in minutes, o
 | `Submission` | `submissions` | Student submission with `link`, `isLate`, `grade`, `feedback` |
 | `Challenge` | `challenges` | Timed challenge with `windowMinutes`, `prize`, `status`, `winnerId` |
 | `ChallengeSubmission` | `challengeSubmissions` | Student challenge entry with `submittedAt` (used for ranking) |
+| `AttendanceSession` | `attendance` | One day's roll call: `classroomId`, `date`, `records[]` — unique per (classroom, date) |
 
 ---
 
@@ -131,4 +143,7 @@ Admins can post a timed challenge (title, description, time window in minutes, o
 | GET/POST | `/api/challenges` | List / create challenges |
 | GET/PATCH | `/api/challenges/[id]` | Challenge detail + submissions, close/set winner |
 | POST | `/api/challenges/[id]/submit` | Student submits solution link |
+| GET/POST | `/api/attendance` | List roll calls by classroom / save a day's roll (upserts on date) |
+| PATCH/DELETE | `/api/attendance/[id]` | Correct or remove a saved roll call |
+| GET | `/api/attendance/summary` | Attendance rates (derived on read; `?studentId=` or `?classroomId=`) |
 | POST | `/api/admin/cleanup` | Admin utility: remove stale data |

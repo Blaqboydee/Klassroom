@@ -10,6 +10,7 @@ A classroom management platform for instructors and students. Admins post assign
 - **Announcements** — Classroom-wide posts with a notification badge for students
 - **Submission matrix** — Admin view of all students × assignments with late flags and CSV export
 - **Streaks** — Students earn a daily streak for consecutive submission days, visible on their dashboard
+- **Attendance** — Instructors take a daily roll call per class; a register grid tracks who attends, with per-student rates, an at-risk flag for 2+ consecutive absences, and CSV export
 - **Live board** — Real-time screen (`/live`) showing every student's submission status for the latest assignment, refreshing every 5 seconds
 - **Timed challenges** — Admins launch a live challenge with a time window and optional prize; students race to submit; live board shows a ranked leaderboard
 - **Student self-enroll** — Shareable invite links (`/join/CODE`) let students join a classroom without an admin manually adding them

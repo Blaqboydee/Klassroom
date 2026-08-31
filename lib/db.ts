@@ -9,7 +9,9 @@ import type { Assignment } from "@/models/Assignment";
 import type { Submission } from "@/models/Submission";
 import type { Announcement } from "@/models/Announcement";
 import type { Challenge, ChallengeSubmission } from "@/models/Challenge";
+import type { AttendanceRecord, AttendanceSession } from "@/models/Attendance";
 import { computeStreak, type StreakResult } from "./streak";
+import { computeAttendanceSummary, type AttendanceSummary } from "./attendance";
 
 const uri = process.env.MONGODB_URI;
 if (!uri) throw new Error("Missing MONGODB_URI environment variable");
@@ -302,7 +304,8 @@ export async function deleteSubmissionsByAssignmentIds(assignmentIds: string[]):
   return result.deletedCount;
 }
 
-// Delete a user and cascade: remove from classroom memberIds, delete their submissions.
+// Delete a user and cascade: remove from classroom memberIds, delete their
+// submissions, and drop their marks from every attendance session.
 export async function deleteUser(id: string): Promise<boolean> {
   const db = await getDb();
   const result = await db.collection("users").deleteOne({ _id: new ObjectId(id) });
@@ -310,17 +313,22 @@ export async function deleteUser(id: string): Promise<boolean> {
   await Promise.all([
     db.collection("classrooms").updateMany({}, { $pull: { memberIds: id } } as Record<string, unknown>),
     db.collection("submissions").deleteMany({ studentId: id }),
+    removeStudentFromAttendance(id),
   ]);
   return true;
 }
 
-// Delete a classroom and cascade: delete its assignments and all related submissions.
+// Delete a classroom and cascade: delete its assignments, all related
+// submissions, and every attendance session held for it.
 export async function deleteClassroomCascade(id: string): Promise<boolean> {
   const db = await getDb();
   const deleted = await db.collection("classrooms").deleteOne({ _id: new ObjectId(id) });
   if (deleted.deletedCount === 0) return false;
   const assignmentIds = await deleteAssignmentsByClassroomId(id);
-  await deleteSubmissionsByAssignmentIds(assignmentIds);
+  await Promise.all([
+    deleteSubmissionsByAssignmentIds(assignmentIds),
+    deleteAttendanceByClassroomId(id),
+  ]);
   return true;
 }
 
@@ -480,4 +488,144 @@ export async function findChallengeSubmissionByStudent(challengeId: string, stud
   const doc = await db.collection("challengeSubmissions").findOne({ challengeId, studentId });
   if (!doc) return null;
   return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as ChallengeSubmission;
+}
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
+// One roll call per (classroomId, date). Saving attendance for a date the class
+// already has upserts that session rather than creating a second one.
+
+// The upsert filter alone can race two concurrent saves into duplicate sessions,
+// so back it with a unique index. Created once per process, best-effort.
+let attendanceIndexPromise: Promise<unknown> | null = null;
+async function ensureAttendanceIndex(db: Db) {
+  attendanceIndexPromise ??= db
+    .collection("attendance")
+    .createIndex({ classroomId: 1, date: 1 }, { unique: true })
+    .catch(() => { /* non-fatal — the upsert filter still dedupes the common case */ });
+  return attendanceIndexPromise;
+}
+
+export async function findAttendanceSessions(filter: { classroomIds: string[] }): Promise<AttendanceSession[]> {
+  if (filter.classroomIds.length === 0) return [];
+  const db = await getDb();
+  const docs = await db
+    .collection("attendance")
+    .find({ classroomId: { $in: filter.classroomIds } })
+    .sort({ date: -1 })
+    .toArray();
+  return docs.map((d) => toId(d as Record<string, unknown> & { _id: ObjectId }) as unknown as AttendanceSession);
+}
+
+export async function findAttendanceSessionById(id: string): Promise<AttendanceSession | null> {
+  const db = await getDb();
+  const doc = await db.collection("attendance").findOne({ _id: new ObjectId(id) });
+  if (!doc) return null;
+  return toId(doc as Record<string, unknown> & { _id: ObjectId }) as unknown as AttendanceSession;
+}
+
+// Create or overwrite the roll call for one classroom on one date.
+export async function upsertAttendanceSession(data: {
+  classroomId: string;
+  adminId: string;
+  date: string;
+  note?: string;
+  records: AttendanceRecord[];
+}): Promise<AttendanceSession> {
+  const db = await getDb();
+  await ensureAttendanceIndex(db);
+  const now = new Date().toISOString();
+  const result = await db.collection("attendance").findOneAndUpdate(
+    { classroomId: data.classroomId, date: data.date },
+    {
+      $set: { adminId: data.adminId, note: data.note ?? "", records: data.records, updatedAt: now },
+      $setOnInsert: { classroomId: data.classroomId, date: data.date, createdAt: now },
+    },
+    { upsert: true, returnDocument: "after" }
+  );
+  return toId(result as Record<string, unknown> & { _id: ObjectId }) as unknown as AttendanceSession;
+}
+
+export async function updateAttendanceSession(
+  id: string,
+  data: { note?: string; records?: AttendanceRecord[] },
+): Promise<AttendanceSession | null> {
+  const db = await getDb();
+  const result = await db.collection("attendance").findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set: { ...data, updatedAt: new Date().toISOString() } },
+    { returnDocument: "after" }
+  );
+  if (!result) return null;
+  return toId(result as Record<string, unknown> & { _id: ObjectId }) as unknown as AttendanceSession;
+}
+
+export async function deleteAttendanceSession(id: string): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.collection("attendance").deleteOne({ _id: new ObjectId(id) });
+  return result.deletedCount === 1;
+}
+
+export async function deleteAttendanceByClassroomId(classroomId: string): Promise<number> {
+  const db = await getDb();
+  const result = await db.collection("attendance").deleteMany({ classroomId });
+  return result.deletedCount;
+}
+
+// Drop a student's marks from every session (used when a user is deleted).
+export async function removeStudentFromAttendance(studentId: string): Promise<void> {
+  const db = await getDb();
+  await db.collection("attendance").updateMany(
+    { "records.studentId": studentId },
+    { $pull: { records: { studentId } } } as Record<string, unknown>
+  );
+}
+
+// ─── Attendance summaries (derived per-class, never stored) ───────────────────
+// Mirrors the streak helpers above: a summary belongs to a (student, classroom)
+// pair and is recomputed from that classroom's sessions on every read.
+
+export interface ClassroomAttendance extends AttendanceSummary {
+  classroomId: string;
+  classroomName: string;
+}
+export interface StudentAttendance extends AttendanceSummary {
+  studentId: string;
+  name: string;
+}
+
+// One student's attendance in each class they're enrolled in (newest class first).
+export async function getStudentClassroomAttendance(studentId: string): Promise<ClassroomAttendance[]> {
+  const classrooms = await findClassrooms({ memberId: studentId });
+  if (classrooms.length === 0) return [];
+
+  const sessions = await findAttendanceSessions({ classroomIds: classrooms.map((c) => c.id) });
+  const sessionsByClassroom = new Map<string, AttendanceSession[]>();
+  for (const s of sessions) {
+    const list = sessionsByClassroom.get(s.classroomId) ?? [];
+    list.push(s);
+    sessionsByClassroom.set(s.classroomId, list);
+  }
+
+  return classrooms.map((c) => ({
+    classroomId: c.id,
+    classroomName: c.name,
+    ...computeAttendanceSummary(sessionsByClassroom.get(c.id) ?? [], studentId),
+  }));
+}
+
+// Every member's attendance within a single classroom.
+export async function getClassroomAttendance(classroomId: string): Promise<StudentAttendance[]> {
+  const classroom = await findClassroomById(classroomId);
+  if (!classroom) return [];
+
+  const [sessions, members] = await Promise.all([
+    findAttendanceSessions({ classroomIds: [classroomId] }),
+    findUsersByIds(classroom.memberIds),
+  ]);
+
+  return members.map((m) => ({
+    studentId: m.id,
+    name: m.name,
+    ...computeAttendanceSummary(sessions, m.id),
+  }));
 }

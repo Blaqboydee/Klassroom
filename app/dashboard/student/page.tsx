@@ -10,6 +10,15 @@ import type { Challenge, ChallengeSubmission } from "@/models/Challenge";
 
 interface SessionUser { id: string; name: string; role: "student" | "admin"; }
 interface ClassStreak { classroomId: string; classroomName: string; streak: number; lastSubmissionDate: string | null; }
+interface ClassAttendance {
+  classroomId: string;
+  classroomName: string;
+  sessionsRecorded: number;
+  present: number;
+  absent: number;
+  rate: number | null;
+  lastPresentDate: string | null;
+}
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -56,6 +65,23 @@ export default function StudentDashboard() {
     }
   };
 
+  // Per-class attendance, derived on read (see lib/attendance.ts)
+  const [attendance, setAttendance] = useState<ClassAttendance[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+
+  const fetchAttendance = async (id: string) => {
+    setAttendanceLoading(true);
+    try {
+      const res = await fetch(`/api/attendance/summary?studentId=${encodeURIComponent(id)}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json() as { summaries: ClassAttendance[] };
+        setAttendance(data.summaries);
+      }
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
   const fetchProfile = async (id: string) => {
     const res = await fetch(`/api/users/${encodeURIComponent(id)}`, { cache: "no-store" });
     if (res.ok) {
@@ -81,7 +107,7 @@ export default function StudentDashboard() {
   }
 
   useEffect(() => {
-    if (studentId) { fetchStreaks(studentId); fetchProfile(studentId); }
+    if (studentId) { fetchStreaks(studentId); fetchProfile(studentId); fetchAttendance(studentId); }
   }, [studentId]);
 
   const [linkValues, setLinkValues] = useState<Record<string, string>>({});
@@ -314,6 +340,40 @@ export default function StudentDashboard() {
             })}
           </div>
         )}
+
+        {/* Per-class attendance — only classes whose instructor has taken a roll */}
+        {(() => {
+          const recorded = attendance.filter((a) => a.sessionsRecorded > 0);
+          if (attendanceLoading && recorded.length === 0) return null;
+          if (recorded.length === 0) return null;
+          return (
+            <>
+              <div className="section-label">Attendance</div>
+              <div className="stats-row" style={{ marginBottom: 24 }}>
+                {recorded.map((a) => {
+                  const rate = a.rate ?? 0;
+                  const good = rate >= 75;
+                  return (
+                    <div key={a.classroomId} className="stat-card">
+                      <div className="stat-num flex items-center gap-2" style={{ color: good ? "#166534" : "#991b1b" }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect width="18" height="18" x="3" y="4" rx="2" />
+                          <path d="M3 10h18M8 2v4M16 2v4" />
+                          {good ? <path d="m9 15 2 2 4-4" /> : <path d="m10 14 4 4m0-4-4 4" />}
+                        </svg>
+                        {rate}%
+                      </div>
+                      <div className="stat-label">{a.classroomName}</div>
+                      <div className="stat-label" style={{ marginTop: 2 }}>
+                        {a.present} of {a.sessionsRecorded} class{a.sessionsRecorded !== 1 ? "es" : ""} attended
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
 
         {/* Stats */}
         <div className="stats-row">
